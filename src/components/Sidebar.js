@@ -4,10 +4,7 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 function Sidebar() {
-  const [teams, setTeams] = useState([
-    // { id: 1, name: "Team 1" },
-    // { id: 2, name: "Team 2" },
-  ]);
+  const [teams, setTeams] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
@@ -30,53 +27,43 @@ function Sidebar() {
   };
 
   const deleteTeam = (id) => {
-    // Check if the team has any employees
     const hasEmployees = employees.some((emp) => emp.teamId === id);
-
-    // Only allow deletion if the team has no employees
     if (!hasEmployees) {
       setTeams(teams.filter((team) => team.id !== id));
     } else {
-      // Show an alert that team can't be deleted
       alert(
         "Cannot delete team with assigned employees. Please remove all employees first."
       );
     }
   };
 
-  const onDragEnd = (result) => {
-    const { destination, source, draggableId } = result;
-
-    // Drop outside any droppable
-    if (!destination) {
-      return;
-    }
-
-    // Drop in the same position
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
-
-    // Extract employee ID from draggableId (removing any prefix if present)
-    const employeeId = parseInt(draggableId.replace("employee-", ""), 10);
-
-    // Update employee team assignment
-    setEmployees((prevEmployees) =>
-      prevEmployees.map((emp) =>
+  // Move an employee to a different team
+  const moveEmployee = (employeeId, targetTeamId) => {
+    setEmployees(
+      employees.map((emp) =>
         emp.id === employeeId
-          ? {
-              ...emp,
-              teamId:
-                destination.droppableId === "unassigned"
-                  ? null
-                  : parseInt(destination.droppableId, 10),
-            }
+          ? { ...emp, teamId: targetTeamId === "unassigned" ? null : parseInt(targetTeamId) }
           : emp
       )
     );
+  };
+
+  // Handle the end of a drag operation
+  const handleDragEnd = (result) => {
+    const { destination, source, draggableId } = result;
+    
+    // If there's no destination or the destination is the same as the source, do nothing
+    if (!destination || 
+        (destination.droppableId === source.droppableId && 
+         destination.index === source.index)) {
+      return;
+    }
+    
+    // Extract the employee ID from the draggableId
+    const employeeId = parseInt(draggableId.replace("employee-", ""));
+    
+    // Move the employee to the new team
+    moveEmployee(employeeId, destination.droppableId);
   };
 
   // Get unassigned employees
@@ -84,233 +71,206 @@ function Sidebar() {
 
   return (
     <div className="container-fluid p-3">
-      <div className="row">
-        <DragDropContext onDragEnd={onDragEnd}>
-          {/* Sidebar Section */}
-          <aside className="col-md-4 d-flex flex-column">
-            <div className="card p-3 shadow-sm mb-3">
-              <h4 className="mb-3">
-                Teams
-                <button
-                  className="btn btn-sm btn-primary float-end"
-                  onClick={addTeam}
-                >
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <div className="row">
+          {/* Left sidebar */}
+          <div className="col-md-4">
+            {/* Teams management */}
+            <div className="card mb-3">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Teams</h5>
+                <button className="btn btn-sm btn-primary" onClick={addTeam}>
                   Add Team
                 </button>
-              </h4>
-              <table className="table table-bordered">
-                <tbody>
+              </div>
+              <div className="card-body">
+                <ul className="list-group">
                   {teams.map((team) => {
-                    // Check if team has employees to determine if delete button should be enabled
                     const hasEmployees = employees.some(
                       (emp) => emp.teamId === team.id
                     );
-
                     return (
-                      <tr key={team.id}>
-                        <td>{team.name}</td>
-                        <td>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => deleteTeam(team.id)}
-                            disabled={hasEmployees}
-                            title={
-                              hasEmployees
-                                ? "Remove all employees first"
-                                : "Delete team"
-                            }
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
+                      <li
+                        key={team.id}
+                        className="list-group-item d-flex justify-content-between align-items-center"
+                      >
+                        {team.name}
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => deleteTeam(team.id)}
+                          disabled={hasEmployees}
+                        >
+                          Delete
+                        </button>
+                      </li>
                     );
                   })}
-                </tbody>
-              </table>
+                </ul>
+              </div>
             </div>
-           
-            <div className="card p-3 shadow-sm mb-3">
-              <h4 className="mb-3">
-                Employees
+
+            {/* Unassigned employees */}
+            <div className="card">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">Unassigned Employees</h5>
                 <button
-                  className="btn btn-sm btn-primary float-end"
+                  className="btn btn-sm btn-primary"
                   onClick={() => setShowModal(true)}
                 >
-                  Add Employees
+                  Add Employee
                 </button>
-              </h4>
-
+              </div>
               <Droppable droppableId="unassigned">
                 {(provided) => (
                   <div
-                    ref={provided.innerRef}
+                    className="card-body"
                     {...provided.droppableProps}
-                    className="border rounded p-2 bg-light"
-                    style={{
-                      minHeight: "100px",
-                      overflow: "auto",
-                    }}
+                    ref={provided.innerRef}
+                    style={{ minHeight: "150px" }}
                   >
-                    <h6>Unassigned Employees</h6>
                     {unassignedEmployees.length === 0 ? (
                       <p className="text-muted">No unassigned employees</p>
                     ) : (
-                      <table className="table table-sm table-striped bg-white">
-                        <thead>
-                          <tr>
-                            <th>Name</th>
-                            <th>Skill</th>
-                            <th>Cost</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {unassignedEmployees.map((emp, index) => (
-                            <Draggable
-                              key={`employee-${emp.id}`}
-                              draggableId={`employee-${emp.id}`}
-                              index={index}
+                      unassignedEmployees.map((emp, index) => (
+                        <Draggable
+                          key={`employee-${emp.id}`}
+                          draggableId={`employee-${emp.id}`}
+                          index={index}
+                        >
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className={`card mb-2 ${
+                                snapshot.isDragging ? "bg-light" : ""
+                              }`}
+                              style={{
+                                ...provided.draggableProps.style,
+                              }}
                             >
-                              {(provided) => (
-                                <tr
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="bg-white"
-                                >
-                                  <td><strong>{emp.name}</strong></td>
-                                  <td>{emp.skill}</td>
-                                  <td>${emp.cost}</td>
-                                  <td>
-                                    <button
-                                      className="btn btn-danger btn-sm"
-                                      onClick={() => deleteEmployee(emp.id)}
-                                    >
-                                      Delete
-                                    </button>
-                                  </td>
-                                </tr>
-                              )}
-                            </Draggable>
-                          ))}
-                        </tbody>
-                      </table>
+                              <div className="card-body p-2">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <div>
+                                    <strong>{emp.name}</strong>
+                                    <br />
+                                    <small>
+                                      {emp.skill} - ${emp.cost}
+                                    </small>
+                                  </div>
+                                  <button
+                                    className="btn btn-sm btn-danger"
+                                    onClick={() => deleteEmployee(emp.id)}
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))
                     )}
                     {provided.placeholder}
                   </div>
                 )}
               </Droppable>
             </div>
-            {showModal && (
-              <EmployeeModal
-                onClose={() => setShowModal(false)}
-                onAdd={addEmployee}
-              />
-            )}
-          </aside>
+          </div>
 
-          {/* Teams Section */}
-          <div className="col-md-8 d-flex overflow-auto">
-            <div className="d-flex flex-row">
-              {teams.map((team) => (
-                <Droppable droppableId={team.id.toString()} key={team.id}>
-                  {(provided) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="card p-3 m-2 shadow-sm"
-                      style={{ minWidth: "300px" }}
-                    >
-                      <h5 className="text-center">{team.name}</h5>
-                      <div
-                        className="border rounded p-2 bg-white"
-                        style={{ minHeight: "200px" }}
-                      >
-                        {employees.filter((emp) => emp.teamId === team.id).length === 0 ? (
-                          <p className="text-muted text-center my-3">No employees assigned</p>
-                        ) : (
-                          <table className="table table-sm">
-                            <thead>
-                              <tr>
-                                <th>Name</th>
-                                <th>Skill</th>
-                                <th>Cost</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {employees
-                                .filter((emp) => emp.teamId === team.id)
-                                .map((emp, index) => (
-                                  <Draggable
-                                    key={`employee-${emp.id}`}
-                                    draggableId={`employee-${emp.id}`}
-                                    index={index}
-                                  >
-                                    {(provided) => (
-                                      <tr
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        className="bg-light"
-                                      >
-                                        <td><strong>{emp.name}</strong></td>
-                                        <td>{emp.skill}</td>
-                                        <td>${emp.cost}</td>
-                                      </tr>
-                                    )}
-                                  </Draggable>
-                                ))}
-                            </tbody>
-                          </table>
-                        )}
-                        {provided.placeholder}
-                      </div>
-                      <hr />
-                      <div className="text-muted">
-                        <small>
-                          Total Employees:{" "}
-                          {
-                            employees.filter((emp) => emp.teamId === team.id)
-                              .length
-                          }
-                        </small>
-                        <br />
-                        <small>
-                          Total Cost: $
-                          {employees
-                            .filter((emp) => emp.teamId === team.id)
-                            .reduce(
-                              (sum, emp) => sum + parseFloat(emp.cost || 0),
-                              0
-                            )
-                            .toFixed(2)}
-                        </small>
-                        <br />
-                        <small>
-                          Average Cost: $
-                          {(() => {
-                            const teamEmployees = employees.filter(
-                              (emp) => emp.teamId === team.id
-                            );
-                            const totalCost = teamEmployees.reduce(
-                              (sum, emp) => sum + parseFloat(emp.cost || 0),
-                              0
-                            );
-                            return teamEmployees.length > 0
-                              ? (totalCost / teamEmployees.length).toFixed(2)
-                              : "0.00";
-                          })()}
-                        </small>
-                      </div>
+          {/* Team cards */}
+          <div className="col-md-8">
+            <div className="d-flex flex-row overflow-auto">
+              {teams.map((team) => {
+                const teamEmployees = employees.filter(
+                  (emp) => emp.teamId === team.id
+                );
+                const totalCost = teamEmployees.reduce(
+                  (sum, emp) => sum + parseFloat(emp.cost || 0),
+                  0
+                );
+                const averageCost =
+                  teamEmployees.length > 0
+                    ? totalCost / teamEmployees.length
+                    : 0;
+
+                return (
+                  <div
+                    key={team.id}
+                    className="card mr-3"
+                    style={{ minWidth: "300px", marginRight: "1rem" }}
+                  >
+                    <div className="card-header">
+                      <h5 className="mb-0 text-center">{team.name}</h5>
                     </div>
-                  )}
-                </Droppable>
-              ))}
+                    <Droppable droppableId={team.id.toString()}>
+                      {(provided) => (
+                        <div
+                          className="card-body"
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          style={{ minHeight: "200px" }}
+                        >
+                          {teamEmployees.length === 0 ? (
+                            <p className="text-muted text-center">
+                              Drag employees here
+                            </p>
+                          ) : (
+                            teamEmployees.map((emp, index) => (
+                              <Draggable
+                                key={`employee-${emp.id}`}
+                                draggableId={`employee-${emp.id}`}
+                                index={index}
+                              >
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={`card mb-2 ${
+                                      snapshot.isDragging ? "bg-light" : ""
+                                    }`}
+                                    style={{
+                                      ...provided.draggableProps.style,
+                                    }}
+                                  >
+                                    <div className="card-body p-2">
+                                      <strong>{emp.name}</strong>
+                                      <br />
+                                      <small>
+                                        {emp.skill} - ${emp.cost}
+                                      </small>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))
+                          )}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                    <div className="card-footer">
+                      <small>
+                        <div>Total Employees: {teamEmployees.length}</div>
+                        <div>Total Cost: ${totalCost.toFixed(2)}</div>
+                        <div>Average Cost: ${averageCost.toFixed(2)}</div>
+                      </small>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </DragDropContext>
-      </div>
+        </div>
+      </DragDropContext>
+
+      {showModal && (
+        <EmployeeModal
+          onClose={() => setShowModal(false)}
+          onAdd={addEmployee}
+        />
+      )}
     </div>
   );
 }
