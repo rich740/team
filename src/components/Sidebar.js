@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import EmployeeModal from "./EmployeeModal";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -13,20 +13,25 @@ function Sidebar() {
     const newTeamName = prompt("Enter Team Name:");
     if (newTeamName) {
       // Ensure unique ID for each team
-      const newTeam = { 
-        id: `team-${uuidv4()}`, 
-        name: newTeamName 
+      const newTeam = {
+        id: `team-${uuidv4()}`,
+        name: newTeamName
       };
       setTeams([...teams, newTeam]);
     }
   };
+  useEffect(() => {
+    console.log("Teams loaded:", teams);
+    console.log("Employees loaded:", employees);
+  }, [teams, employees]);
+
 
   const addEmployee = (newEmployee) => {
     // Ensure unique ID for each employee
-    const employeeWithId = { 
-      ...newEmployee, 
-      id: `employee-${uuidv4()}`, 
-      teamId: null 
+    const employeeWithId = {
+      ...newEmployee,
+      id: `employee-${uuidv4()}`,
+      teamId: null
     };
     setEmployees([...employees, employeeWithId]);
   };
@@ -50,37 +55,39 @@ function Sidebar() {
     setEmployees(
       employees.map((emp) =>
         emp.id === employeeId
-          ? { 
-              ...emp, 
-              teamId: targetTeamId === "unassigned" 
-                ? null 
-                : targetTeamId 
-            }
+          ? {
+            ...emp,
+            teamId: targetTeamId === "unassigned"
+              ? null
+              : targetTeamId
+          }
           : emp
       )
     );
   };
 
   const handleDragEnd = (result) => {
+    console.log(result, "resultresultresult");
+
     if (!result) return;
-    
+
     const { destination, source, draggableId } = result;
-    
+
     // If there's no destination, do nothing
     if (!destination) {
       return;
     }
-    
+
     // If the destination is the same as the source, do nothing
-    if (destination.droppableId === source.droppableId && 
-        destination.index === source.index) {
+    if (destination.droppableId === source.droppableId &&
+      destination.index === source.index) {
       return;
     }
-    
+
     try {
       // Extract the employee ID from the draggableId
       const employeeId = draggableId;
-      
+
       // Move the employee to the new team
       moveEmployee(employeeId, destination.droppableId);
     } catch (error) {
@@ -89,7 +96,9 @@ function Sidebar() {
   };
 
   // Get unassigned employees
-  const unassignedEmployees = employees.filter((emp) => emp.teamId === null);
+  // const unassignedEmployees = employees.filter((emp) => emp.teamId === null);
+  const unassignedEmployees = employees?.filter(emp => !emp.teamId) || [];
+
 
   // Create array of team-specific employees
   const teamEmployeesList = teams.map(team => {
@@ -120,9 +129,10 @@ function Sidebar() {
         height: 'auto',
       };
     }
-    
+
     return draggableStyle;
   };
+  console.log("Rendering Droppable with unassigned employees:", unassignedEmployees);
 
   return (
     <div className="container-fluid p-3">
@@ -138,7 +148,7 @@ function Sidebar() {
                   Add Team
                 </button>
               </div>
-              <div className="card-body"  style={{ maxHeight: "250px", minWidth:"250px", overflowY: "auto" }}>
+              <div className="card-body" style={{ maxHeight: "250px", minWidth: "250px", overflowY: "auto" }}>
                 <ul className="list-group">
                   {teams.map((team) => {
                     const hasEmployees = employees.some(
@@ -172,19 +182,23 @@ function Sidebar() {
                   Add Employee
                 </button>
               </div>
+
               <Droppable droppableId="unassigned" type="EMPLOYEE">
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
                     {...provided.droppableProps}
                     className="card-body p-0"
-                    style={{ 
-                      minWidth:"250px",
+                    style={{
+                      minWidth: "250px",
                       maxHeight: "250px",
                       overflowY: "auto",
-                      backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : "" 
+                      backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : ""
                     }}
                   >
+                    {/* Always Render Placeholder */}
+                    {provided.placeholder}
+
                     {unassignedEmployees.length === 0 ? (
                       <p className="text-muted p-3">No unassigned employees</p>
                     ) : (
@@ -199,26 +213,22 @@ function Sidebar() {
                         </thead>
                         <tbody>
                           {unassignedEmployees.map((emp, index) => (
-                            <Draggable
-                              key={emp.id}
-                              draggableId={emp.id}
-                              index={index}
-                            >
+                            <Draggable key={emp.id} draggableId={emp.id} index={index}>
                               {(provided, snapshot) => (
                                 <tr
                                   ref={provided.innerRef}
                                   {...provided.draggableProps}
                                   {...provided.dragHandleProps}
-                                  style={getDragStyle(snapshot.isDragging, provided.draggableProps.style)}
+                                  style={{
+                                    ...provided.draggableProps.style,
+                                    background: snapshot.isDragging ? "#f0f0f0" : "white",
+                                  }}
                                 >
                                   <td>{emp.name}</td>
                                   <td>{emp.skill}</td>
                                   <td>${emp.cost}</td>
                                   <td>
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() => deleteEmployee(emp.id)}
-                                    >
+                                    <button className="btn btn-sm btn-danger" onClick={() => deleteEmployee(emp.id)}>
                                       Delete
                                     </button>
                                   </td>
@@ -226,13 +236,13 @@ function Sidebar() {
                               )}
                             </Draggable>
                           ))}
-                          {provided.placeholder}
                         </tbody>
                       </table>
                     )}
                   </div>
                 )}
               </Droppable>
+
             </div>
           </div>
 
@@ -254,9 +264,9 @@ function Sidebar() {
                         ref={provided.innerRef}
                         {...provided.droppableProps}
                         className="card-body p-0"
-                        style={{ 
+                        style={{
                           minHeight: "420px",
-                          backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : "" 
+                          backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : ""
                         }}
                       >
                         {teamEmployees.length === 0 ? (
@@ -266,7 +276,7 @@ function Sidebar() {
                         ) : (
                           <table className="table table-hover mb-0">
                             <thead>
-                           
+
                             </thead>
                             <tbody>
                               {teamEmployees.map((emp, index) => (
