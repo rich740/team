@@ -7,26 +7,19 @@ import './App.css';
 
 
 
-function Teams() {
-  return <h1>Teams Page</h1>;
-}
-
-function Employees() {
-  return <h1>Employees Page</h1>;
-}
-
 function App() {
   return (
     <Router>
       <Header />
       <div className="main-content">
+        {/* <TeamManagementApp /> */}
         <Sidebar />
         <div className="content">
           <Routes>
             
             {/* <Route path="/" element={<Dashboard />} /> */}
-            <Route path="/teams" element={<Teams />} />
-            <Route path="/employees" element={<Employees />} />
+            {/* <Route path="/teams" element={<Teams />} />
+            <Route path="/employees" element={<Employees />} /> */}
           </Routes>
         </div>
       </div>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import EmployeeModal from "./EmployeeModal";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { v4 as uuidv4 } from 'uuid';
 
 function Sidebar() {
   const [teams, setTeams] = useState([]);
@@ -11,15 +12,23 @@ function Sidebar() {
   const addTeam = () => {
     const newTeamName = prompt("Enter Team Name:");
     if (newTeamName) {
-      setTeams([...teams, { id: teams.length + 1, name: newTeamName }]);
+      // Ensure unique ID for each team
+      const newTeam = { 
+        id: `team-${uuidv4()}`, 
+        name: newTeamName 
+      };
+      setTeams([...teams, newTeam]);
     }
   };
 
   const addEmployee = (newEmployee) => {
-    setEmployees([
-      ...employees,
-      { ...newEmployee, id: employees.length + 1, teamId: null },
-    ]);
+    // Ensure unique ID for each employee
+    const employeeWithId = { 
+      ...newEmployee, 
+      id: `employee-${uuidv4()}`, 
+      teamId: null 
+    };
+    setEmployees([...employees, employeeWithId]);
   };
 
   const deleteEmployee = (id) => {
@@ -37,37 +46,83 @@ function Sidebar() {
     }
   };
 
-  // Move an employee to a different team
   const moveEmployee = (employeeId, targetTeamId) => {
     setEmployees(
       employees.map((emp) =>
         emp.id === employeeId
-          ? { ...emp, teamId: targetTeamId === "unassigned" ? null : parseInt(targetTeamId) }
+          ? { 
+              ...emp, 
+              teamId: targetTeamId === "unassigned" 
+                ? null 
+                : targetTeamId 
+            }
           : emp
       )
     );
   };
 
-  // Handle the end of a drag operation
   const handleDragEnd = (result) => {
+    if (!result) return;
+    
     const { destination, source, draggableId } = result;
     
-    // If there's no destination or the destination is the same as the source, do nothing
-    if (!destination || 
-        (destination.droppableId === source.droppableId && 
-         destination.index === source.index)) {
+    // If there's no destination, do nothing
+    if (!destination) {
       return;
     }
     
-    // Extract the employee ID from the draggableId
-    const employeeId = parseInt(draggableId.replace("employee-", ""));
+    // If the destination is the same as the source, do nothing
+    if (destination.droppableId === source.droppableId && 
+        destination.index === source.index) {
+      return;
+    }
     
-    // Move the employee to the new team
-    moveEmployee(employeeId, destination.droppableId);
+    try {
+      // Extract the employee ID from the draggableId
+      const employeeId = draggableId;
+      
+      // Move the employee to the new team
+      moveEmployee(employeeId, destination.droppableId);
+    } catch (error) {
+      console.error("Error during drag and drop:", error);
+    }
   };
 
   // Get unassigned employees
   const unassignedEmployees = employees.filter((emp) => emp.teamId === null);
+
+  // Create array of team-specific employees
+  const teamEmployeesList = teams.map(team => {
+    const teamEmployees = employees.filter(emp => emp.teamId === team.id);
+    return {
+      team: team,
+      employees: teamEmployees,
+      totalCost: teamEmployees.reduce((sum, emp) => sum + parseFloat(emp.cost || 0), 0),
+      averageCost: teamEmployees.length > 0
+        ? teamEmployees.reduce((sum, emp) => sum + parseFloat(emp.cost || 0), 0) / teamEmployees.length
+        : 0
+    };
+  });
+
+  // Custom drag style
+  const getDragStyle = (isDragging, draggableStyle) => {
+    if (isDragging) {
+      return {
+        ...draggableStyle,
+        display: 'flex',
+        alignItems: 'center',
+        background: '#f0f0f0',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+        border: '1px solid #ddd',
+        borderRadius: '3px',
+        padding: '5px 10px',
+        width: 'auto',
+        height: 'auto',
+      };
+    }
+    
+    return draggableStyle;
+  };
 
   return (
     <div className="container-fluid p-3">
@@ -79,11 +134,11 @@ function Sidebar() {
             <div className="card mb-3">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Teams</h5>
-                <button className="btn btn-sm btn-primary" onClick={addTeam}>
+                <button className="btn btn-sm btn-success" onClick={addTeam}>
                   Add Team
                 </button>
               </div>
-              <div className="card-body">
+              <div className="card-body"  style={{ maxHeight: "250px", minWidth:"250px", overflowY: "auto" }}>
                 <ul className="list-group">
                   {teams.map((team) => {
                     const hasEmployees = employees.some(
@@ -109,69 +164,72 @@ function Sidebar() {
               </div>
             </div>
 
-            {/* Unassigned employees */}
+            {/* Unassigned employees table */}
             <div className="card">
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Unassigned Employees</h5>
-                <button
-                  className="btn btn-sm btn-primary"
-                  onClick={() => setShowModal(true)}
-                >
+                <h5 className="mb-0">Employees</h5>
+                <button className="btn btn-sm btn-success" onClick={() => setShowModal(true)}>
                   Add Employee
                 </button>
               </div>
-              <Droppable droppableId="unassigned">
-                {(provided) => (
+              <Droppable droppableId="unassigned" type="EMPLOYEE">
+                {(provided, snapshot) => (
                   <div
-                    className="card-body"
-                    {...provided.droppableProps}
                     ref={provided.innerRef}
-                    style={{ minHeight: "150px" }}
+                    {...provided.droppableProps}
+                    className="card-body p-0"
+                    style={{ 
+                      minWidth:"250px",
+                      maxHeight: "250px",
+                      overflowY: "auto",
+                      backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : "" 
+                    }}
                   >
                     {unassignedEmployees.length === 0 ? (
-                      <p className="text-muted">No unassigned employees</p>
+                      <p className="text-muted p-3">No unassigned employees</p>
                     ) : (
-                      unassignedEmployees.map((emp, index) => (
-                        <Draggable
-                          key={`employee-${emp.id}`}
-                          draggableId={`employee-${emp.id}`}
-                          index={index}
-                        >
-                          {(provided, snapshot) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`card mb-2 ${
-                                snapshot.isDragging ? "bg-light" : ""
-                              }`}
-                              style={{
-                                ...provided.draggableProps.style,
-                              }}
+                      <table className="table table-hover mb-0">
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Skill</th>
+                            <th>Cost</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {unassignedEmployees.map((emp, index) => (
+                            <Draggable
+                              key={emp.id}
+                              draggableId={emp.id}
+                              index={index}
                             >
-                              <div className="card-body p-2">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <div>
-                                    <strong>{emp.name}</strong>
-                                    <br />
-                                    <small>
-                                      {emp.skill} - ${emp.cost}
-                                    </small>
-                                  </div>
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() => deleteEmployee(emp.id)}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))
+                              {(provided, snapshot) => (
+                                <tr
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  style={getDragStyle(snapshot.isDragging, provided.draggableProps.style)}
+                                >
+                                  <td>{emp.name}</td>
+                                  <td>{emp.skill}</td>
+                                  <td>${emp.cost}</td>
+                                  <td>
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() => deleteEmployee(emp.id)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </tbody>
+                      </table>
                     )}
-                    {provided.placeholder}
                   </div>
                 )}
               </Droppable>
@@ -181,85 +239,80 @@ function Sidebar() {
           {/* Team cards */}
           <div className="col-md-8">
             <div className="d-flex flex-row overflow-auto">
-              {teams.map((team) => {
-                const teamEmployees = employees.filter(
-                  (emp) => emp.teamId === team.id
-                );
-                const totalCost = teamEmployees.reduce(
-                  (sum, emp) => sum + parseFloat(emp.cost || 0),
-                  0
-                );
-                const averageCost =
-                  teamEmployees.length > 0
-                    ? totalCost / teamEmployees.length
-                    : 0;
-
-                return (
-                  <div
-                    key={team.id}
-                    className="card mr-3"
-                    style={{ minWidth: "300px", marginRight: "1rem" }}
-                  >
-                    <div className="card-header">
-                      <h5 className="mb-0 text-center">{team.name}</h5>
-                    </div>
-                    <Droppable droppableId={team.id.toString()}>
-                      {(provided) => (
-                        <div
-                          className="card-body"
-                          {...provided.droppableProps}
-                          ref={provided.innerRef}
-                          style={{ minHeight: "200px" }}
-                        >
-                          {teamEmployees.length === 0 ? (
-                            <p className="text-muted text-center">
-                              Drag employees here
-                            </p>
-                          ) : (
-                            teamEmployees.map((emp, index) => (
-                              <Draggable
-                                key={`employee-${emp.id}`}
-                                draggableId={`employee-${emp.id}`}
-                                index={index}
-                              >
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className={`card mb-2 ${
-                                      snapshot.isDragging ? "bg-light" : ""
-                                    }`}
-                                    style={{
-                                      ...provided.draggableProps.style,
-                                    }}
-                                  >
-                                    <div className="card-body p-2">
-                                      <strong>{emp.name}</strong>
-                                      <br />
-                                      <small>
-                                        {emp.skill} - ${emp.cost}
-                                      </small>
-                                    </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))
-                          )}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                    <div className="card-footer">
-                      <small>
-                        <div>Total Employees: {teamEmployees.length}</div>
-                        <div>Total Cost: ${totalCost.toFixed(2)}</div>
-                        <div>Average Cost: ${averageCost.toFixed(2)}</div>
-                      </small>
-                    </div>
+              {teamEmployeesList.map(({ team, employees: teamEmployees, totalCost, averageCost }) => (
+                <div
+                  key={team.id}
+                  className="card mr-3"
+                  style={{ minWidth: "350px", marginRight: "1rem" }}
+                >
+                  <div className="card-header">
+                    <h5 className="mb-0 text-center">{team.name}</h5>
                   </div>
-                );
-              })}
+                  <Droppable droppableId={team.id} type="EMPLOYEE">
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="card-body p-0"
+                        style={{ 
+                          minHeight: "420px",
+                          backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : "" 
+                        }}
+                      >
+                        {teamEmployees.length === 0 ? (
+                          <p className="text-muted text-center p-3">
+                            Drag employees here
+                          </p>
+                        ) : (
+                          <table className="table table-hover mb-0">
+                            <thead>
+                           
+                            </thead>
+                            <tbody>
+                              {teamEmployees.map((emp, index) => (
+                                <Draggable
+                                  key={emp.id}
+                                  draggableId={emp.id}
+                                  index={index}
+                                >
+                                  {(provided, snapshot) => (
+                                    <tr
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      style={getDragStyle(snapshot.isDragging, provided.draggableProps.style)}
+                                    >
+                                      <td>{emp.name}</td>
+                                      <td>{emp.skill}</td>
+                                      <td>${emp.cost}</td>
+                                      {/* <td>
+                                        <button
+                                          className="btn btn-sm btn-danger"
+                                          onClick={() => deleteEmployee(emp.id)}
+                                        >
+                                          Delete
+                                        </button>
+                                      </td> */}
+                                    </tr>
+                                  )}
+                                </Draggable>
+                              ))}
+                              {provided.placeholder}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
+                  <div className="card-footer">
+                    <small>
+                      <div>Total Employees: {teamEmployees.length}</div>
+                      <div>Total Cost: ${totalCost.toFixed(2)}</div>
+                      <div>Average Cost: ${averageCost.toFixed(2)}</div>
+                    </small>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
