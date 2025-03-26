@@ -57,7 +57,7 @@ function EmployeeModal({ onClose, onAdd }) {
             </div>
           </div>
           <div className="modal-footer">
-            <button className="btn btn-primary" onClick={handleAdd}>Add Employee</button>
+            <button className="btn btn-sm btn-success" onClick={handleAdd}>Add Employee</button>
             <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           </div>
         </div>

@@ -6,13 +6,19 @@ const AddTeamModal = ({ onClose, onAdd }) => {
   const handleAdd = () => {
     if (newMemberName.trim()) {
       onAdd(newMemberName);
+      onClose(); // Close the modal after adding the team
       setNewMemberName('');
     }
   };
 
   return (
-    <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog" role="document">
+    <div
+    className="modal fade show d-flex align-items-center justify-content-center"
+    tabIndex="-1"
+    role="dialog"
+    style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
+  >
+      <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Add Team Member</h5>

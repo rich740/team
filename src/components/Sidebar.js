@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import EmployeeModal from "./EmployeeModal";
+import TeamModal from "./TeamModal";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { v4 as uuidv4 } from 'uuid';
@@ -8,9 +9,9 @@ function Sidebar() {
   const [teams, setTeams] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
 
-  const addTeam = () => {
-    const newTeamName = prompt("Enter Team Name:");
+  const addTeam = (newTeamName) => {
     if (newTeamName) {
       // Ensure unique ID for each team
       const newTeam = {
@@ -20,11 +21,11 @@ function Sidebar() {
       setTeams([...teams, newTeam]);
     }
   };
+
   useEffect(() => {
     console.log("Teams loaded:", teams);
     console.log("Employees loaded:", employees);
   }, [teams, employees]);
-
 
   const addEmployee = (newEmployee) => {
     // Ensure unique ID for each employee
@@ -96,9 +97,7 @@ function Sidebar() {
   };
 
   // Get unassigned employees
-  // const unassignedEmployees = employees.filter((emp) => emp.teamId === null);
   const unassignedEmployees = employees?.filter(emp => !emp.teamId) || [];
-
 
   // Create array of team-specific employees
   const teamEmployeesList = teams.map(team => {
@@ -132,7 +131,6 @@ function Sidebar() {
 
     return draggableStyle;
   };
-  console.log("Rendering Droppable with unassigned employees:", unassignedEmployees);
 
   return (
     <div className="container-fluid p-3">
@@ -144,7 +142,7 @@ function Sidebar() {
             <div className="card mb-3">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h5 className="mb-0">Teams</h5>
-                <button className="btn btn-sm btn-success" onClick={addTeam}>
+                <button className="btn btn-sm btn-success" onClick={() => setShowTeamModal(true)}>
                   Add Team
                 </button>
               </div>
@@ -242,7 +240,6 @@ function Sidebar() {
                   </div>
                 )}
               </Droppable>
-
             </div>
           </div>
 
@@ -275,9 +272,6 @@ function Sidebar() {
                           </p>
                         ) : (
                           <table className="table table-hover mb-0">
-                            <thead>
-
-                            </thead>
                             <tbody>
                               {teamEmployees.map((emp, index) => (
                                 <Draggable
@@ -295,14 +289,6 @@ function Sidebar() {
                                       <td>{emp.name}</td>
                                       <td>{emp.skill}</td>
                                       <td>${emp.cost}</td>
-                                      {/* <td>
-                                        <button
-                                          className="btn btn-sm btn-danger"
-                                          onClick={() => deleteEmployee(emp.id)}
-                                        >
-                                          Delete
-                                        </button>
-                                      </td> */}
                                     </tr>
                                   )}
                                 </Draggable>
@@ -332,6 +318,13 @@ function Sidebar() {
         <EmployeeModal
           onClose={() => setShowModal(false)}
           onAdd={addEmployee}
+        />
+      )}
+
+      {showTeamModal && (
+        <TeamModal
+          onClose={() => setShowTeamModal(false)}
+          onAdd={addTeam}
         />
       )}
     </div>
