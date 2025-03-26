@@ -18,7 +18,7 @@ const AddTeamModal = ({ onClose, onAdd }) => {
     role="dialog"
     style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
   >
-      <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+      <div className="modal-dialog modal-dialog-centered modal-lg" >
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title">Add Team Member</h5>
