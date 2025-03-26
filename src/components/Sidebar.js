@@ -406,7 +406,7 @@ function Sidebar() {
               <div
                 key={team.id}
                 className="card border-0 shadow-lg rounded-4"
-                style={{ minWidth: '250px', maxWidth: '280px', backgroundColor: '#ffffff' }}
+                style={{ minWidth: '250px', maxWidth: '250px', backgroundColor: '#ffffff' }}
               >
                 <div className="card-header bg-success text-white text-center rounded-top-4">
                   <h5 className="mb-0">{team.name}</h5>
@@ -418,7 +418,7 @@ function Sidebar() {
                       {...provided.droppableProps}
                       className="card-body p-0"
                       style={{
-                        minHeight: '280px',
+                        minHeight: '250px',
                         backgroundColor: snapshot.isDraggingOver ? '#d1e7dd' : '#ffffff',
                         transition: 'background-color 0.3s ease',
                       }}
