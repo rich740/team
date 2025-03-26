@@ -6,7 +6,7 @@ function Header() {
   return (
     <header className="bg-success text-white d-flex align-items-center justify-content-center py-2">
       <i className="bi bi-people-fill me-2" style={{ fontSize: '2.5rem' }}></i>
-      <h1 className="mb-0">Team Management Board</h1>
+      <h3 className="mb-0">Team Management Board</h3>
     </header>
   );
 }

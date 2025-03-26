@@ -397,7 +397,7 @@ function Sidebar() {
           <div className="col-md-8">
       <div className="card shadow-sm border-dark">
         <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
-          <h4 className="mb-1">Team Planning</h4>
+          <h5 className="mb-1">Team Planning</h5>
           <i className="bi bi-kanban" style={{ fontSize: '1.8rem' }}></i>
         </div>
         <div className="card-body bg-light">
