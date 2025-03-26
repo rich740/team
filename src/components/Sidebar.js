@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import EmployeeModal from "./EmployeeModal";
 import TeamModal from "./TeamModal";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
@@ -13,21 +15,39 @@ function Sidebar() {
 
   const addTeam = (newTeamName) => {
     if (newTeamName) {
+      // Check if team name already exists
+      if (teams.some(team => team.name.toLowerCase() === newTeamName.toLowerCase())) {
+        toast.error(`Team "${newTeamName}" already exists!`, {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
+
       // Ensure unique ID for each team
       const newTeam = {
         id: `team-${uuidv4()}`,
         name: newTeamName
       };
       setTeams([...teams, newTeam]);
+      toast.success(`Team "${newTeamName}" added successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      setShowTeamModal(false);
     }
   };
 
-  useEffect(() => {
-    console.log("Teams loaded:", teams);
-    console.log("Employees loaded:", employees);
-  }, [teams, employees]);
-
   const addEmployee = (newEmployee) => {
+    // Check if employee name already exists
+    if (employees.some(emp => emp.name.toLowerCase() === newEmployee.name.toLowerCase())) {
+      toast.error(`Employee "${newEmployee.name}" already exists!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
     // Ensure unique ID for each employee
     const employeeWithId = {
       ...newEmployee,
@@ -35,41 +55,105 @@ function Sidebar() {
       teamId: null
     };
     setEmployees([...employees, employeeWithId]);
+    toast.success(`Employee "${newEmployee.name}" added successfully!`, {
+      position: "top-right",
+      autoClose: 3000,
+    });
+    setShowModal(false);
   };
 
   const deleteEmployee = (id) => {
+    // Find the employee before deletion to get their name
+    const employeeToDelete = employees.find(emp => emp.id === id);
+    
+    // Check if employee is in a team before deletion
+    if (employeeToDelete.teamId) {
+      const teamOfEmployee = teams.find(team => team.id === employeeToDelete.teamId);
+      toast.error(`Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee.name}. Remove from team first.`, {
+        position: "top-right",
+        autoClose: 4000,
+        type: "error"
+      });
+      return;
+    }
+
+    // Remove the employee
     setEmployees(employees.filter((emp) => emp.id !== id));
+    
+    // Show success toast
+    toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
+      position: "top-right",
+      autoClose: 3000,
+    });
   };
 
   const deleteTeam = (id) => {
-    const hasEmployees = employees.some((emp) => emp.teamId === id);
-    if (!hasEmployees) {
-      setTeams(teams.filter((team) => team.id !== id));
-    } else {
-      alert(
-        "Cannot delete team with assigned employees. Please remove all employees first."
-      );
+    const teamToDelete = teams.find(team => team.id === id);
+    
+    // Use optional chaining safely and check for employees in the team
+    const hasEmployees = employees.some(emp => emp.teamId === id);
+  
+    if (hasEmployees) {
+      // Ensure the team name is safely displayed
+      const teamName = teamToDelete ? teamToDelete.name : 'Unknown Team';
+      
+      // Show error toast with team-specific message
+      toast.error(`Cannot delete team "${teamName}" with assigned employees. Please remove all employees first.`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+  
+      return;
     }
+  
+    // Remove the team
+    setTeams(teams.filter((team) => team.id !== id));
+          
+    // Show success toast
+    toast.success(`Team "${teamToDelete.name}" deleted successfully!`, {
+      position: "top-right",
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
   };
 
-  const moveEmployee = (employeeId, targetTeamId) => {
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === employeeId
-          ? {
+const moveEmployee = (employeeId, targetTeamId) => {
+  const employee = employees.find(emp => emp.id === employeeId);
+  const previousTeam = employee.teamId 
+    ? teams.find(team => team.id === employee.teamId)?.name || 'Unassigned'
+    : 'Unassigned';
+  
+  const newTeam = targetTeamId === "unassigned"
+    ? 'Unassigned'
+    : teams.find(team => team.id === targetTeamId)?.name;
+
+  setEmployees(
+    employees.map((emp) =>
+      emp.id === employeeId
+        ? {
             ...emp,
             teamId: targetTeamId === "unassigned"
               ? null
               : targetTeamId
           }
-          : emp
-      )
-    );
-  };
+        : emp
+    )
+  );
 
+  // Add toast for team movement
+  toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
+    position: "top-right",
+    autoClose: 2000,
+  });
+};
   const handleDragEnd = (result) => {
-    console.log(result, "resultresultresult");
-
     if (!result) return;
 
     const { destination, source, draggableId } = result;
@@ -93,6 +177,10 @@ function Sidebar() {
       moveEmployee(employeeId, destination.droppableId);
     } catch (error) {
       console.error("Error during drag and drop:", error);
+      toast.error("Error moving employee", {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
   };
 
@@ -134,6 +222,9 @@ function Sidebar() {
 
   return (
     <div className="container-fluid p-3">
+      {/* ToastContainer remains at the root level */}
+      <ToastContainer />
+      
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="row">
           {/* Left sidebar */}
@@ -226,7 +317,10 @@ function Sidebar() {
                                   <td>{emp.skill}</td>
                                   <td>${emp.cost}</td>
                                   <td>
-                                    <button className="btn btn-sm btn-danger" onClick={() => deleteEmployee(emp.id)}>
+                                    <button 
+                                      className="btn btn-sm btn-danger" 
+                                      onClick={() => deleteEmployee(emp.id)}
+                                    >
                                       Delete
                                     </button>
                                   </td>
