@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import EmployeeModal from "./EmployeeModal";
@@ -90,15 +90,12 @@ function Sidebar() {
   const deleteTeam = (id) => {
     const teamToDelete = teams.find(team => team.id === id);
     
-    // Use optional chaining safely and check for employees in the team
+    // Check if the team has any employees
     const hasEmployees = employees.some(emp => emp.teamId === id);
   
     if (hasEmployees) {
-      // Ensure the team name is safely displayed
-      const teamName = teamToDelete ? teamToDelete.name : 'Unknown Team';
-      
-      // Show error toast with team-specific message
-      toast.error(`Cannot delete team "${teamName}" with assigned employees. Please remove all employees first.`, {
+      // Show error toast if team has employees
+      toast.error(`Cannot delete team "${teamToDelete.name}" with assigned employees. Please remove all employees first.`, {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -106,11 +103,10 @@ function Sidebar() {
         pauseOnHover: true,
         draggable: true,
       });
-  
-      return;
+      return; // Exit the function without deleting
     }
   
-    // Remove the team
+    // Remove the team if no employees are assigned
     setTeams(teams.filter((team) => team.id !== id));
           
     // Show success toast
@@ -124,57 +120,36 @@ function Sidebar() {
     });
   };
 
-  const handleTeamDeleteClick = (id) => {
-    const teamToDelete = teams.find(team => team.id === id);
+  const moveEmployee = (employeeId, targetTeamId) => {
+    const employee = employees.find(emp => emp.id === employeeId);
+    const previousTeam = employee.teamId 
+      ? teams.find(team => team.id === employee.teamId)?.name || 'Unassigned'
+      : 'Unassigned';
     
-    // Check if team has employees
-    const hasEmployees = employees.some(emp => emp.teamId === id);
-  
-    if (hasEmployees) {
-      // Ensure the team name is safely displayed
-      const teamName = teamToDelete ? teamToDelete.name : 'Unknown Team';
-      
-      // Show error toast with team-specific message
-      toast.error(`Cannot delete team "${teamName}" with assigned employees. Please remove all employees first.`, {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-    }
+    const newTeam = targetTeamId === "unassigned"
+      ? 'Unassigned'
+      : teams.find(team => team.id === targetTeamId)?.name;
+
+    setEmployees(
+      employees.map((emp) =>
+        emp.id === employeeId
+          ? {
+              ...emp,
+              teamId: targetTeamId === "unassigned"
+                ? null
+                : targetTeamId
+            }
+          : emp
+      )
+    );
+
+    // Add toast for team movement
+    toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
+      position: "top-right",
+      autoClose: 2000,
+    });
   };
 
-const moveEmployee = (employeeId, targetTeamId) => {
-  const employee = employees.find(emp => emp.id === employeeId);
-  const previousTeam = employee.teamId 
-    ? teams.find(team => team.id === employee.teamId)?.name || 'Unassigned'
-    : 'Unassigned';
-  
-  const newTeam = targetTeamId === "unassigned"
-    ? 'Unassigned'
-    : teams.find(team => team.id === targetTeamId)?.name;
-
-  setEmployees(
-    employees.map((emp) =>
-      emp.id === employeeId
-        ? {
-            ...emp,
-            teamId: targetTeamId === "unassigned"
-              ? null
-              : targetTeamId
-          }
-        : emp
-    )
-  );
-
-  // Add toast for team movement
-  toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
-    position: "top-right",
-    autoClose: 2000,
-  });
-};
   const handleDragEnd = (result) => {
     if (!result) return;
 
@@ -244,7 +219,6 @@ const moveEmployee = (employeeId, targetTeamId) => {
 
   return (
     <div className="container-fluid p-3">
-      {/* ToastContainer remains at the root level */}
       <ToastContainer />
       
       <DragDropContext onDragEnd={handleDragEnd}>
@@ -261,26 +235,20 @@ const moveEmployee = (employeeId, targetTeamId) => {
               </div>
               <div className="card-body" style={{ maxHeight: "200px", minWidth: "200px", overflowY: "auto" }}>
                 <ul className="list-group">
-                  {teams.map((team) => {
-                    const hasEmployees = employees.some(
-                      (emp) => emp.teamId === team.id
-                    );
-                    return (
-                      <li
-                        key={team.id}
-                        className="list-group-item d-flex justify-content-between align-items-center"
+                  {teams.map((team) => (
+                    <li
+                      key={team.id}
+                      className="list-group-item d-flex justify-content-between align-items-center"
+                    >
+                      {team.name}
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => deleteTeam(team.id)}
                       >
-                        {team.name}
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => hasEmployees ? handleTeamDeleteClick(team.id) : deleteTeam(team.id)}
-                          disabled={hasEmployees}
-                        >
-                          Delete
-                        </button>
-                      </li>
-                    );
-                  })}
+                        Delete
+                      </button>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
@@ -307,7 +275,6 @@ const moveEmployee = (employeeId, targetTeamId) => {
                       backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : ""
                     }}
                   >
-                    {/* Always Render Placeholder */}
                     {provided.placeholder}
 
                     {unassignedEmployees.length === 0 ? (
