@@ -124,6 +124,28 @@ function Sidebar() {
     });
   };
 
+  const handleTeamDeleteClick = (id) => {
+    const teamToDelete = teams.find(team => team.id === id);
+    
+    // Check if team has employees
+    const hasEmployees = employees.some(emp => emp.teamId === id);
+  
+    if (hasEmployees) {
+      // Ensure the team name is safely displayed
+      const teamName = teamToDelete ? teamToDelete.name : 'Unknown Team';
+      
+      // Show error toast with team-specific message
+      toast.error(`Cannot delete team "${teamName}" with assigned employees. Please remove all employees first.`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  };
+
 const moveEmployee = (employeeId, targetTeamId) => {
   const employee = employees.find(emp => emp.id === employeeId);
   const previousTeam = employee.teamId 
@@ -251,7 +273,7 @@ const moveEmployee = (employeeId, targetTeamId) => {
                         {team.name}
                         <button
                           className="btn btn-sm btn-danger"
-                          onClick={() => deleteTeam(team.id)}
+                          onClick={() => hasEmployees ? handleTeamDeleteClick(team.id) : deleteTeam(team.id)}
                           disabled={hasEmployees}
                         >
                           Delete
