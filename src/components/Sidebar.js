@@ -397,7 +397,7 @@ function Sidebar() {
           <div className="col-md-8">
       <div className="card shadow-sm border-dark">
         <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
-          <h4 className="mb-0">Team Planning</h4>
+          <h4 className="mb-1">Team Planning</h4>
           <i className="bi bi-kanban" style={{ fontSize: '1.8rem' }}></i>
         </div>
         <div className="card-body bg-light">
@@ -406,7 +406,7 @@ function Sidebar() {
               <div
                 key={team.id}
                 className="card border-0 shadow-lg rounded-4"
-                style={{ minWidth: '350px', maxWidth: '350px', backgroundColor: '#ffffff' }}
+                style={{ minWidth: '250px', maxWidth: '280px', backgroundColor: '#ffffff' }}
               >
                 <div className="card-header bg-success text-white text-center rounded-top-4">
                   <h5 className="mb-0">{team.name}</h5>
@@ -418,7 +418,7 @@ function Sidebar() {
                       {...provided.droppableProps}
                       className="card-body p-0"
                       style={{
-                        minHeight: '400px',
+                        minHeight: '280px',
                         backgroundColor: snapshot.isDraggingOver ? '#d1e7dd' : '#ffffff',
                         transition: 'background-color 0.3s ease',
                       }}
