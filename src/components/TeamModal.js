@@ -35,7 +35,7 @@ const AddTeamModal = ({ onClose, onAdd }) => {
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="button" className="btn btn-primary" onClick={handleAdd}>Add</button>
+            <button type="button" className="btn btn-success" onClick={handleAdd}>Add</button>
           </div>
         </div>
       </div>

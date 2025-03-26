@@ -20,12 +20,12 @@ function EmployeeModal({ onClose, onAdd }) {
   };
 
   return (
-    <div
+   <div
       className="modal fade show d-flex align-items-center justify-content-center"
       tabIndex="-1"
       role="dialog"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
-    >
+    > 
       <div className="modal-dialog modal-dialog-centered modal-lg"> {/* Increased size using modal-lg */}
         <div className="modal-content">
           <div className="modal-header">
@@ -58,7 +58,7 @@ function EmployeeModal({ onClose, onAdd }) {
           </div>
           <div className="modal-footer">
             <button className="btn btn-sm btn-success" onClick={handleAdd}>Add Employee</button>
-            <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+            <button className="btn  btn-sm btn-secondary" onClick={onClose}>Cancel</button>
           </div>
         </div>
       </div>

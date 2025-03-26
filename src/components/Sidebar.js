@@ -146,7 +146,7 @@ function Sidebar() {
                   Add Team
                 </button>
               </div>
-              <div className="card-body" style={{ maxHeight: "250px", minWidth: "250px", overflowY: "auto" }}>
+              <div className="card-body" style={{ maxHeight: "200px", minWidth: "200px", overflowY: "auto" }}>
                 <ul className="list-group">
                   {teams.map((team) => {
                     const hasEmployees = employees.some(
@@ -188,8 +188,8 @@ function Sidebar() {
                     {...provided.droppableProps}
                     className="card-body p-0"
                     style={{
-                      minWidth: "250px",
-                      maxHeight: "250px",
+                      minWidth: "200px",
+                      maxHeight: "200px",
                       overflowY: "auto",
                       backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : ""
                     }}
@@ -250,7 +250,7 @@ function Sidebar() {
                 <div
                   key={team.id}
                   className="card mr-3"
-                  style={{ minWidth: "350px", marginRight: "1rem" }}
+                  style={{ minWidth: "300px", marginRight: "1rem" }}
                 >
                   <div className="card-header">
                     <h5 className="mb-0 text-center">{team.name}</h5>
@@ -262,7 +262,7 @@ function Sidebar() {
                         {...provided.droppableProps}
                         className="card-body p-0"
                         style={{
-                          minHeight: "420px",
+                          minHeight: "400px",
                           backgroundColor: snapshot.isDraggingOver ? "#f8f9fa" : ""
                         }}
                       >
