@@ -5,9 +5,9 @@ import EmployeeModal from "./EmployeeModal";
 import TeamModal from "./TeamModal";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import "bootstrap/dist/css/bootstrap.min.css";
-
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { v4 as uuidv4 } from "uuid";
+import "../Library/typography.css";
 
 function Sidebar() {
   const [teams, setTeams] = useState([]);
@@ -264,9 +264,9 @@ function Sidebar() {
             {/* Teams management */}
             <div className="card shadow-sm border-dark mb-4">
               <div className="card-header text-black d-flex justify-content-between align-items-center">
-                <h5 className="mb-1">Teams</h5>
+                <h5 className="mb-1 font-semibold">Teams</h5>
                 <button
-                  className="btn btn-sm btn-success"
+                  className="btn btn-sm btn-success font-medium"
                   onClick={() => setShowTeamModal(true)}
                 >
                   <i className="bi bi-plus-lg me-1"></i>Add Team
@@ -281,7 +281,7 @@ function Sidebar() {
                 }}
               >
                 {teams.length === 0 ? (
-                  <p className="text-muted text-center">No teams created</p>
+                  <p className="text-muted text-center text-sm">No teams created</p>
                 ) : (
                   <ul className="list-group list-group-flush">
                     {teams.map((team) => (
@@ -289,7 +289,7 @@ function Sidebar() {
                         key={team.id}
                         className="list-group-item d-flex justify-content-between align-items-center"
                       >
-                        <span className="fw-medium">{team.name}</span>
+                        <span className="font-medium text-base">{team.name}</span>
                         <button
                           className="btn btn-sm btn-outline-danger"
                           onClick={() => deleteTeam(team.id)}
@@ -309,9 +309,9 @@ function Sidebar() {
             {/* Unassigned employees */}
             <div className="card shadow-sm border-dark">
               <div className="card-header text-black d-flex justify-content-between align-items-center">
-                <h5 className="mb-0">Unassigned Employees</h5>
+                <h5 className="mb-0 font-semibold">Unassigned Employees</h5>
                 <button
-                  className="btn btn-sm btn-success"
+                  className="btn btn-sm btn-success font-medium"
                   onClick={() => setShowModal(true)}
                 >
                   <i className="bi bi-person-plus me-1"></i>Add Employee
@@ -334,17 +334,17 @@ function Sidebar() {
                     }}
                   >
                     {unassignedEmployees.length === 0 ? (
-                      <p className="text-muted text-center p-3">
+                      <p className="text-muted text-center p-3 text-sm">
                         No unassigned employees
                       </p>
                     ) : (
                       <table className="table table-hover mb-0">
                         <thead className="table-light">
                           <tr>
-                            <th>Name</th>
-                            <th>Skill</th>
-                            <th>Cost</th>
-                            <th>Action</th>
+                            <th className="text-sm font-medium">Name</th>
+                            <th className="text-sm font-medium">Skill</th>
+                            <th className="text-sm font-medium">Cost</th>
+                            <th className="text-sm font-medium">Action</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -368,9 +368,9 @@ function Sidebar() {
                                       : "white",
                                   }}
                                 >
-                                  <td>{emp.name}</td>
-                                  <td>{emp.skill}</td>
-                                  <td>${emp.cost}</td>
+                                  <td className="text-sm">{emp.name}</td>
+                                  <td className="text-sm">{emp.skill}</td>
+                                  <td className="text-sm">${emp.cost}</td>
                                   <td>
                                     <button
                                       className="btn btn-sm btn-outline-danger"
@@ -397,7 +397,7 @@ function Sidebar() {
           <div className="col-md-8">
       <div className="card shadow-sm border-dark">
         <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
-          <h5 className="mb-1">Team Planning</h5>
+          <h5 className="mb-1 font-semibold">Team Planning</h5>
           <i className="bi bi-kanban" style={{ fontSize: '1.8rem' }}></i>
         </div>
         <div className="card-body bg-light">
@@ -409,7 +409,7 @@ function Sidebar() {
                 style={{ minWidth: '250px', maxWidth: '250px', backgroundColor: '#ffffff' }}
               >
                 <div className="card-header bg-success text-white text-center rounded-top-4">
-                  <h5 className="mb-0">{team.name}</h5>
+                  <h5 className="mb-0 font-semibold">{team.name}</h5>
                 </div>
                 <Droppable droppableId={team.id} type="EMPLOYEE">
                   {(provided, snapshot) => (
@@ -440,9 +440,9 @@ function Sidebar() {
                                       backgroundColor: snapshot.isDragging ? '#e9ecef' : 'white',
                                     }}
                                   >
-                                    <td>{emp.name}</td>
-                                    <td>{emp.skill}</td>
-                                    <td>${emp.cost}</td>
+                                    <td  className="text-sm">{emp.name}</td>
+                                    <td  className="text-sm">{emp.skill}</td>
+                                    <td  className="text-sm">${emp.cost}</td>
                                   </tr>
                                 )}
                               </Draggable>
@@ -456,8 +456,8 @@ function Sidebar() {
                 </Droppable>
                 <div className="card-footer bg-light rounded-bottom-4">
                   <div className="d-flex justify-content-between">
-                    <small className="text-muted">Employees: {teamEmployees.length}</small>
-                    <small className="text-muted text-end">
+                    <small className="text-muted text-xs">Employees: {teamEmployees.length}</small>
+                    <small className="text-muted text-xs text-end">
                       Total Cost: ${totalCost.toFixed(2)}<br />
                       Average Cost: ${averageCost.toFixed(2)}
                     </small>
