@@ -396,37 +396,49 @@ const fetchEmployees = async () => {
   // };
 
 
-  const moveEmployee = (employeeId, targetTeamId) => {
-    // Remove 'employee-' prefix for API calls or comparisons if needed
-    const numericEmployeeId = employeeId.replace('employee-', '');
-    const numericTeamId = targetTeamId === 'unassigned' 
-      ? null 
-      : targetTeamId.replace('team-', '');
-
-    // Update employee's team in local state
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === employeeId
-          ? { ...emp, teamId: numericTeamId }
-          : emp
-      )
-    );
-
-    const employee = employees.find((emp) => emp.id === employeeId);
-    const previousTeam = employee.teamId
-      ? teams.find((team) => team.id === `team-${employee.teamId}`)?.name || "Unassigned"
-      : "Unassigned";
-
-    const newTeam =
-      targetTeamId === "unassigned"
-        ? "Unassigned"
-        : teams.find((team) => team.id === targetTeamId)?.name;
-
-    // Add toast for team movement
-    toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
-      position: "top-right",
-      autoClose: 2000,
-    });
+  const moveEmployee = async (employeeId, targetTeamId) => {
+    try {
+      // Remove 'employee-' prefix for API calls or comparisons if needed
+      const numericEmployeeId = employeeId.replace('employee-', '');
+      const numericTeamId = targetTeamId === 'unassigned' 
+        ? null 
+        : targetTeamId.replace('team-', '');
+  
+      // Call an API to update the employee's team
+      // You'll need to create this API method in your employees service
+      await updateEmployeeTeam(numericEmployeeId, numericTeamId);
+  
+      // Update employee's team in local state
+      setEmployees(
+        employees.map((emp) =>
+          emp.id === employeeId
+            ? { ...emp, teamId: targetTeamId === 'unassigned' ? null : numericTeamId }
+            : emp
+        )
+      );
+  
+      const employee = employees.find((emp) => emp.id === employeeId);
+      const previousTeam = employee.teamId
+        ? teams.find((team) => team.id === `team-${employee.teamId}`)?.name || "Unassigned"
+        : "Unassigned";
+  
+      const newTeam =
+        targetTeamId === "unassigned"
+          ? "Unassigned"
+          : teams.find((team) => team.id === targetTeamId)?.name;
+  
+      // Add toast for team movement
+      toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (error) {
+      console.error('Error moving employee:', error);
+      toast.error('Failed to move employee', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
   };
   // const moveEmployee = (employeeId, targetTeamId) => {
   //   const employee = employees.find((emp) => emp.id === employeeId);
