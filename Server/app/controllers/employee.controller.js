@@ -27,27 +27,36 @@ exports.createEmployee = async (req, res) => {
 };
 
 exports.deleteEmployee = async (req, res) => {
-    const { id } = req.params;
-  
-    try {
-      // Find the employee by ID
-      const employee = await Employees.findByPk(id);
-  
-      // If employee not found, return 404
-      if (!employee) {
-        return res.status(404).json({ message: "Employee not found" });
+  try {
+      const { id } = req.params;
+
+      console.log('Backend: Received delete request for employee ID:', id);
+
+      // Perform deletion
+      const deletedCount = await Employees.destroy({
+          where: { id: id }
+      });
+
+      if (deletedCount === 0) {
+          return res.status(404).json({
+              message: 'Employee not found',
+              success: false
+          });
       }
-  
-      // Delete the employee
-      await employee.destroy();
-  
-      // Send success response
-      res.status(200).json({ message: "Employee deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting employee:", error);
-      res.status(500).json({ message: "Internal Server Error" });
-    }
-  };
+
+      res.status(200).json({
+          message: 'Employee deleted successfully',
+          success: true
+      });
+  } catch (error) {
+      console.error('Backend: Employee deletion error', error);
+      res.status(500).json({
+          message: 'Error deleting employee',
+          error: error.message,
+          success: false
+      });
+  }
+};
 
   console.log("Full DB Object:", Object.keys(db));
   console.log("DB Employees:", db.employees);

@@ -9,7 +9,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import { v4 as uuidv4 } from "uuid";
 import "../Library/typography.css";
 import { getTeamList, createTeam, deleteTeam } from "../services/teams";
-import { getEmployeesList, createEmployees, deleteEmployees } from "../services/employees";
+import { getEmployeesList, createEmployees, deleteEmployees} from "../services/employees";
 
 function Sidebar({ onToggleSidebar, isSidebarVisible }) {
   const [teams, setTeams] = useState([]);
@@ -44,7 +44,16 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
 const fetchEmployees = async () => {
   try {
     const response = await getEmployeesList({}); // <--- you must have this API function
-    setEmployees(response.data);
+     // Ensure each employee has a unique and valid ID
+     const processedEmployees = response.data.map(employee => ({
+      ...employee,
+      id: employee.id 
+        ? `employee-${employee.id}` 
+        : `employee-${uuidv4()}`, // Fallback to generated UUID if no ID
+      teamId: employee.teamId ? `team-${employee.teamId}` : null
+    })).filter(emp => emp.id !== 'employee-undefined'); // Remove any undefined employees
+
+    setEmployees(processedEmployees);
   } catch (error) {
     toast.error("Failed to fetch employees", {
       position: "top-right",
@@ -94,52 +103,56 @@ const fetchEmployees = async () => {
     }
   };
 
-  const handleDeleteEmployee = async (id) => {
-    const employeeToDelete = employees.find((emp) => emp.id === id);
 
-    if (!employeeToDelete) {
-      toast.error("Employee not found!", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    if (employeeToDelete.teamId) {
-      const teamOfEmployee = teams.find(
-        (team) => team.id === employeeToDelete.teamId
-      );
-      toast.error(
-        `Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee?.name || "unknown team"}. Remove from team first.`,
-        {
-          position: "top-right",
-          autoClose: 4000,
-          type: "error",
-        }
-      );
-      return;
-    }
-
+  const deleteEmployee = async (id) => {
     try {
-      // Call API with actual numeric ID directly
-      await deleteEmployees(employeeToDelete.id);
-
-      // Remove employee from state
-      setEmployees(employees.filter((emp) => emp.id !== employeeToDelete.id));
-
+      // Remove 'employee-' prefix if it exists
+      const numericId = id.replace('employee-', '');
+  
+      // Call delete API
+      await deleteEmployees(numericId);
+      
+      // Remove the employee from local state
+      setEmployees(employees.filter((emp) => emp.id !== id));
+  
+      // Find the employee name for the toast message
+      const employeeToDelete = employees.find((emp) => emp.id === id);
+  
+      // Show success toast
       toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
         position: "top-right",
         autoClose: 3000,
       });
     } catch (error) {
+      // More comprehensive error handling
       console.error('Delete employee error:', error);
-      toast.error("Failed to delete employee", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+  
+      // Check for specific error responses
+      if (error.response) {
+        // Server responded with an error status
+        toast.error(
+          error.response.data?.message || 
+          `Failed to delete employee. Status: ${error.response.status}`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      } else if (error.request) {
+        // Request was made but no response received
+        toast.error("No response from server. Please check your connection.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } else {
+        // Something happened in setting up the request
+        toast.error("Error processing employee deletion request", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
     }
-};
-
+  };
 
   const addTeam = async (newTeamName) => {
     if (newTeamName) {
@@ -382,10 +395,26 @@ const fetchEmployees = async () => {
   //   });
   // };
 
+
   const moveEmployee = (employeeId, targetTeamId) => {
+    // Remove 'employee-' prefix for API calls or comparisons if needed
+    const numericEmployeeId = employeeId.replace('employee-', '');
+    const numericTeamId = targetTeamId === 'unassigned' 
+      ? null 
+      : targetTeamId.replace('team-', '');
+
+    // Update employee's team in local state
+    setEmployees(
+      employees.map((emp) =>
+        emp.id === employeeId
+          ? { ...emp, teamId: numericTeamId }
+          : emp
+      )
+    );
+
     const employee = employees.find((emp) => emp.id === employeeId);
     const previousTeam = employee.teamId
-      ? teams.find((team) => team.id === employee.teamId)?.name || "Unassigned"
+      ? teams.find((team) => team.id === `team-${employee.teamId}`)?.name || "Unassigned"
       : "Unassigned";
 
     const newTeam =
@@ -393,23 +422,40 @@ const fetchEmployees = async () => {
         ? "Unassigned"
         : teams.find((team) => team.id === targetTeamId)?.name;
 
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === employeeId
-          ? {
-              ...emp,
-              teamId: targetTeamId === "unassigned" ? null : targetTeamId,
-            }
-          : emp
-      )
-    );
-
     // Add toast for team movement
     toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
       position: "top-right",
       autoClose: 2000,
     });
   };
+  // const moveEmployee = (employeeId, targetTeamId) => {
+  //   const employee = employees.find((emp) => emp.id === employeeId);
+  //   const previousTeam = employee.teamId
+  //     ? teams.find((team) => team.id === employee.teamId)?.name || "Unassigned"
+  //     : "Unassigned";
+
+  //   const newTeam =
+  //     targetTeamId === "unassigned"
+  //       ? "Unassigned"
+  //       : teams.find((team) => team.id === targetTeamId)?.name;
+
+  //   setEmployees(
+  //     employees.map((emp) =>
+  //       emp.id === employeeId
+  //         ? {
+  //             ...emp,
+  //             teamId: targetTeamId === "unassigned" ? null : targetTeamId,
+  //           }
+  //         : emp
+  //     )
+  //   );
+
+  //   // Add toast for team movement
+  //   toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
+  //     position: "top-right",
+  //     autoClose: 2000,
+  //   });
+  // };
 
   const handleDragEnd = (result) => {
     if (!result) return;
@@ -619,7 +665,7 @@ const fetchEmployees = async () => {
                                   <td>
                                     <button
                                       className="btn btn-sm btn-outline-danger"
-                                      onClick={() => handleDeleteEmployee(emp.id)}
+                                      onClick={() => deleteEmployee(emp.id)}
                                     >
                                       <i className="bi bi-trash"></i>
                                     </button>
