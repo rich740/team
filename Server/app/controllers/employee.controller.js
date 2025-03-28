@@ -1,127 +1,219 @@
 const db = require("../models");
+const { Op } = require('sequelize');
 const Employees = db.Employees;
 
 // Create a new employee
 exports.createEmployee = async (req, res) => {
   const { name, skill, cost } = req.body;
 
+  // Validate input fields
   if (!name) {
-    return res.status(400).json({ message: "Employee name is required" });
+    return res.status(400).json({ 
+      success: false,
+      message: "Employee name is required" 
+    });
+  }
+
+  // Validate skill and cost
+  if (!skill) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Employee skill is required" 
+    });
+  }
+
+  // Ensure cost is a valid number
+  const parsedCost = parseFloat(cost);
+  if (isNaN(parsedCost) || parsedCost < 0) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Invalid cost. Must be a non-negative number" 
+    });
   }
 
   try {
-    // Check if employee already exists
-    const existingEmployee = await Employees.findOne({ where: { name } });
+    // Case-insensitive check for existing employee
+    const existingEmployee = await Employees.findOne({ 
+      where: { 
+        name: {
+          [Op.like]: name.trim() 
+        } 
+      } 
+    });
+
     if (existingEmployee) {
-      return res.status(400).json({ message: "Employee already exists" });
+      return res.status(400).json({ 
+        success: false,
+        message: `Employee "${name}" already exists` 
+      });
     }
 
     // Create new employee
-    const newEmployee = await Employees.create({ name, skill, cost });
+    const newEmployee = await Employees.create({ 
+      name: name.trim(), 
+      skill: skill.trim(), 
+      cost: parsedCost 
+    });
 
-    res.status(201).json({ message: "Employee added successfully", newEmployee });
+    // Return success response with created employee
+    res.status(201).json({ 
+      success: true,
+      message: "Employee added successfully", 
+      employee: {
+        id: newEmployee.id,
+        name: newEmployee.name,
+        skill: newEmployee.skill,
+        cost: newEmployee.cost
+      }
+    });
+
   } catch (error) {
     console.error("Error creating employee:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ 
+      success: false,
+      message: "Internal Server Error", 
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
-exports.deleteEmployee = async (req, res) => {
+// Get all employees
+exports.getAllEmployees = async (req, res) => {
   try {
-      const { id } = req.params;
+    // Fetch all employees with error handling
+    const employees = await Employees.findAll({
+      attributes: ['id', 'name', 'skill', 'cost', 'teamId'], // Specify exact fields
+      order: [['createdAt', 'DESC']] // Optional: sort by most recent
+    });
 
-      console.log('Backend: Received delete request for employee ID:', id);
-
-      // Perform deletion
-      const deletedCount = await Employees.destroy({
-          where: { id: id }
+    // Handle empty result set
+    if (!employees || employees.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No employees found",
+        employees: [],
+        count: 0
       });
+    }
 
-      if (deletedCount === 0) {
-          return res.status(404).json({
-              message: 'Employee not found',
-              success: false
-          });
-      }
+    // Return successful response
+    res.status(200).json({
+      success: true,
+      message: "Employees retrieved successfully",
+      employees: employees,
+      count: employees.length
+    });
 
-      res.status(200).json({
-          message: 'Employee deleted successfully',
-          success: true
-      });
   } catch (error) {
-      console.error('Backend: Employee deletion error', error);
-      res.status(500).json({
-          message: 'Error deleting employee',
-          error: error.message,
-          success: false
-      });
+    console.error("Error fetching employees:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal Server Error",
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
-  console.log("Full DB Object:", Object.keys(db));
-  console.log("DB Employees:", db.employees);
-  console.log("DB Sequelize:", db.sequelize);
-  
- 
-  // exports.getAllEmployees = async (req, res) => {
-  //   try {
-  //     // Add extensive logging
-  //     console.log("Attempting to retrieve employees");
-      
-  //     // Defensive programming approach
-  //     if (!Employees) {
-  //       console.error("Employees model is undefined!");
-  //       return res.status(500).json({ 
-  //         message: "Database model not initialized",
-  //         dbKeys: Object.keys(db)
-  //       });
-  //     }
-  
-  //     // Verify if findAll method exists
-  //     if (typeof Employees.findAll !== 'function') {
-  //       console.error("findAll is not a function", typeof db.employees.findAll);
-  //       return res.status(500).json({ 
-  //         message: "Invalid model configuration",
-  //         employeesType: typeof Employees
-  //       });
-  //     }
-  
-  //     const employees = await Employees.findAll();
-  
-  //     if (!employees || employees.length === 0) {
-  //       return res.status(200).json({
-  //         message: "No employees found",
-  //         count: 0,
-  //         employees: []
-  //       });
-  //     }
-  
-  //     res.status(200).json({
-  //       message: "Employees retrieved successfully",
-  //       count: employees.length,
-  //       employees: employees
-  //     });
-  
-  //   } catch (error) {
-  //     console.error("Comprehensive Error:", {
-  //       message: error.message,
-  //       stack: error.stack,
-  //       name: error.name
-  //     });
-  
-  //     res.status(500).json({ 
-  //       message: "Internal Server Error", 
-  //       errorDetails: error.message 
-  //     });
-  //   }
-  // };
+// Delete an employee
+exports.deleteEmployee = async (req, res) => {
+  const { id } = req.params;
 
-  exports.getAllEmployees = async (req, res) => {
-    try {
-      const employees = await Employees.findAll(); // Access Employees model properly
-      res.json(employees);
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      res.status(500).json({ message: "Internal Server Error" });
+  // Validate ID
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Employee ID is required"
+    });
+  }
+
+  try {
+    // Check if employee exists before deletion
+    const employeeToDelete = await Employees.findByPk(id);
+
+    if (!employeeToDelete) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
     }
-  };
+
+    // Perform deletion
+    const deletedCount = await Employees.destroy({
+      where: { id: id }
+    });
+
+    // Confirm deletion
+    if (deletedCount > 0) {
+      res.status(200).json({
+        success: true,
+        message: 'Employee deleted successfully',
+        deletedEmployee: {
+          id: employeeToDelete.id,
+          name: employeeToDelete.name
+        }
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete employee'
+      });
+    }
+
+  } catch (error) {
+    console.error('Backend: Employee deletion error', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting employee',
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Update employee's team
+exports.updateEmployeeTeam = async (req, res) => {
+  const { id } = req.params;
+  const { teamId } = req.body;
+
+  // Validate input
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      message: "Employee ID is required"
+    });
+  }
+
+  try {
+    // Find the employee
+    const employee = await Employees.findByPk(id);
+
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    // Update the team
+    const updatedEmployee = await employee.update({
+      teamId: teamId || null // Allow setting to null (unassigned)
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Employee team updated successfully',
+      employee: {
+        id: updatedEmployee.id,
+        name: updatedEmployee.name,
+        teamId: updatedEmployee.teamId
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating employee team:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating employee team',
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

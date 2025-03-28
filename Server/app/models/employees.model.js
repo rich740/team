@@ -3,9 +3,11 @@ module.exports = (sequelize, DataTypes) => {
     "employees",
     {
       id: {
-        type: DataTypes.UUID, // Use UUID for unique ID
-        defaultValue: DataTypes.UUIDV4, // Auto-generate UUID
-        primaryKey: true,
+        type: DataTypes.BIGINT,
+          allowNull: false,
+          primaryKey: true,
+          autoIncrement: true,
+          field: "id" // Use UUID for unique I
       },
       name: {
         type: DataTypes.STRING(255),
@@ -16,6 +18,10 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
       cost: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+      },
+      teamid: {
         type: DataTypes.BIGINT,
         allowNull: true,
       },

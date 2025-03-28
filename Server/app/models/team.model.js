@@ -1,9 +1,11 @@
 module.exports = (sequelize, DataTypes) => {
     const Team = sequelize.define("Team", {
       id: {
-        type: DataTypes.UUID, // Use UUID for unique team ID
-        defaultValue: DataTypes.UUIDV4, // Auto-generate UUID
+        type: DataTypes.BIGINT,
+        allowNull: false,
         primaryKey: true,
+        autoIncrement: true,
+        field: "id"
       },
       name: {
         type: DataTypes.STRING,

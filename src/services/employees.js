@@ -13,3 +13,7 @@ export const createEmployees = (values) => {
  export const deleteEmployees= (employeeId) => {
    return axios.delete(`${Endpoint.deleteEmployees}/${employeeId}`);
 }
+
+export const updateEmployees= (employeeId) => {
+   return axios.patch(`${Endpoint.updateEmployees}/${employeeId}`);
+}

@@ -9,7 +9,7 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import { v4 as uuidv4 } from "uuid";
 import "../Library/typography.css";
 import { getTeamList, createTeam, deleteTeam } from "../services/teams";
-import { getEmployeesList, createEmployees, deleteEmployees} from "../services/employees";
+import { getEmployeesList, createEmployees, deleteEmployees, updateEmployees} from "../services/employees";
 
 function Sidebar({ onToggleSidebar, isSidebarVisible }) {
   const [teams, setTeams] = useState([]);
@@ -43,24 +43,35 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
 // Fetch employees from API
 const fetchEmployees = async () => {
   try {
-    const response = await getEmployeesList({}); // <--- you must have this API function
-     // Ensure each employee has a unique and valid ID
-     const processedEmployees = response.data.map(employee => ({
+    const response = await getEmployeesList();
+    
+    console.log("API Response:", response.data); // Debugging log
+
+    if (!response.data || !response.data.employees) {
+      toast.error("No employees found", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    const processedEmployees = response.data.employees.map(employee => ({
       ...employee,
-      id: employee.id 
-        ? `employee-${employee.id}` 
-        : `employee-${uuidv4()}`, // Fallback to generated UUID if no ID
+      id: employee.id ? `employee-${employee.id}` : `employee-${uuidv4()}`,
       teamId: employee.teamId ? `team-${employee.teamId}` : null
-    })).filter(emp => emp.id !== 'employee-undefined'); // Remove any undefined employees
+    })).filter(emp => emp.id !== 'employee-undefined');
 
     setEmployees(processedEmployees);
+
   } catch (error) {
+    console.error("Fetch Employees Error:", error);
     toast.error("Failed to fetch employees", {
       position: "top-right",
       autoClose: 3000,
     });
   }
 };
+
 
   const addEmployee = async (newEmployee) => {
     // Check if employee name already exists
@@ -103,49 +114,49 @@ const fetchEmployees = async () => {
     }
   };
 
-
   const deleteEmployee = async (id) => {
+    if (!id) {
+      toast.error("Invalid employee ID. Unable to delete.");
+      return;
+    }
+  
     try {
-      // Remove 'employee-' prefix if it exists
+      // Remove 'employee-' prefix if present
       const numericId = id.replace('employee-', '');
   
-      // Call delete API
+      // Ensure the ID is valid before making the request
+      if (!numericId) {
+        toast.error("Invalid employee ID format.");
+        return;
+      }
+  
       await deleteEmployees(numericId);
-      
+  
       // Remove the employee from local state
-      setEmployees(employees.filter((emp) => emp.id !== id));
+      setEmployees((prevEmployees) => prevEmployees.filter((emp) => emp.id !== id));
   
-      // Find the employee name for the toast message
+      // Find employee details for the toast message
       const employeeToDelete = employees.find((emp) => emp.id === id);
-  
-      // Show success toast
-      toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
+      
+      toast.success(`Employee "${employeeToDelete?.name || 'Unknown'}" deleted successfully!`, {
         position: "top-right",
         autoClose: 3000,
       });
-    } catch (error) {
-      // More comprehensive error handling
-      console.error('Delete employee error:', error);
   
-      // Check for specific error responses
+    } catch (error) {
+      console.error("Delete employee error:", error);
+  
       if (error.response) {
-        // Server responded with an error status
         toast.error(
-          error.response.data?.message || 
-          `Failed to delete employee. Status: ${error.response.status}`,
-          {
-            position: "top-right",
-            autoClose: 3000,
-          }
+          error.response.data?.message || `Failed to delete employee. Status: ${error.response.status}`,
+          { position: "top-right", autoClose: 3000 }
         );
       } else if (error.request) {
-        // Request was made but no response received
         toast.error("No response from server. Please check your connection.", {
           position: "top-right",
           autoClose: 3000,
         });
       } else {
-        // Something happened in setting up the request
         toast.error("Error processing employee deletion request", {
           position: "top-right",
           autoClose: 3000,
@@ -153,6 +164,7 @@ const fetchEmployees = async () => {
       }
     }
   };
+  
 
   const addTeam = async (newTeamName) => {
     if (newTeamName) {
@@ -406,7 +418,7 @@ const fetchEmployees = async () => {
   
       // Call an API to update the employee's team
       // You'll need to create this API method in your employees service
-      await updateEmployeeTeam(numericEmployeeId, numericTeamId);
+      await updateEmployees(numericEmployeeId, numericTeamId);
   
       // Update employee's team in local state
       setEmployees(
@@ -440,6 +452,8 @@ const fetchEmployees = async () => {
       });
     }
   };
+
+
   // const moveEmployee = (employeeId, targetTeamId) => {
   //   const employee = employees.find((emp) => emp.id === employeeId);
   //   const previousTeam = employee.teamId
@@ -469,45 +483,56 @@ const fetchEmployees = async () => {
   //   });
   // };
 
+ 
+  // const handleDragEnd = (result) => {
+  //   if (!result) return;
+
+  //   const { destination, source, draggableId } = result;
+
+  //   // If there's no destination, do nothing
+  //   if (!destination) {
+  //     return;
+  //   }
+
+  //   // If the destination is the same as the source, do nothing
+  //   if (
+  //     destination.droppableId === source.droppableId &&
+  //     destination.index === source.index
+  //   ) {
+  //     return;
+  //   }
+
+  //   try {
+  //     // Extract the employee ID from the draggableId
+  //     const employeeId = draggableId;
+
+  //     // Move the employee to the new team
+  //     moveEmployee(employeeId, destination.droppableId);
+  //       // Sort both teams alphabetically
+  //       setAssignedEmployees((prev) =>
+  //         [...prev].sort((a, b) => a.name.localeCompare(b.name))
+  //       );
+  //   setEmployees((prev) =>
+  //     prev.sort((a, b) => a.name.localeCompare(b.name))
+  //   );
+  //   } catch (error) {
+  //     console.error("Error during drag and drop:", error);
+  //     toast.error("Error moving employee", {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //     });
+  //   }
+  // };
   const handleDragEnd = (result) => {
-    if (!result) return;
-
-    const { destination, source, draggableId } = result;
-
-    // If there's no destination, do nothing
-    if (!destination) {
-      return;
-    }
-
-    // If the destination is the same as the source, do nothing
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
-
-    try {
-      // Extract the employee ID from the draggableId
-      const employeeId = draggableId;
-
-      // Move the employee to the new team
-      moveEmployee(employeeId, destination.droppableId);
-        // Sort both teams alphabetically
-        setAssignedEmployees((prev) =>
-          [...prev].sort((a, b) => a.name.localeCompare(b.name))
-        );
-    setEmployees((prev) =>
-      prev.sort((a, b) => a.name.localeCompare(b.name))
-    );
-    } catch (error) {
-      console.error("Error during drag and drop:", error);
-      toast.error("Error moving employee", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-    }
+    const { source, destination, draggableId } = result;
+  
+    if (!destination) return; // If dropped outside a droppable area, return
+  
+    // Call moveEmployee function to update the employee's team
+    moveEmployee(draggableId, destination.droppableId);
   };
+  
+  
 
   // Get unassigned employees
   const unassignedEmployees = employees?.filter((emp) => !emp.teamId) || [];
@@ -620,8 +645,8 @@ const fetchEmployees = async () => {
                   <i className="bi bi-person-plus me-1"></i>Add Employee
                 </button>
               </div>
+<Droppable droppableId={teams.id} type="EMPLOYEE">
 
-              <Droppable droppableId="unassigned" type="EMPLOYEE">
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
@@ -654,11 +679,8 @@ const fetchEmployees = async () => {
                           {[...unassignedEmployees]
                             .sort((a, b) => a.name.localeCompare(b.name))
                           .map((emp, index) => (
-                            <Draggable
-                              key={emp.id}
-                              draggableId={emp.id}
-                              index={index}
-                            >
+                            <Draggable key={emp.id} draggableId={emp.id.toString()} index={index}>
+
                               {(provided, snapshot) => (
                                 <tr
                                   ref={provided.innerRef}
