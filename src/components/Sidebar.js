@@ -284,254 +284,81 @@ const fetchEmployees = async () => {
 
 
 
-  // const addTeam = (newTeamName) => {
-  //   if (newTeamName) {
-  //     // Check if team name already exists
-  //     if (
-  //       teams.some(
-  //         (team) => team.name.toLowerCase() === newTeamName.toLowerCase()
-  //       )
-  //     ) {
-  //       toast.error(`Team "${newTeamName}" already exists!`, {
-  //         position: "top-right",
-  //         autoClose: 3000,
-  //       });
-  //       return;
-  //     }
-
-  //     // Ensure unique ID for each team
-  //     const newTeam = {
-  //       id: `team-${uuidv4()}`,
-  //       name: newTeamName,
-  //     };
-  //     setTeams([...teams, newTeam]);
-  //     toast.success(`Team "${newTeamName}" added successfully!`, {
-  //       position: "top-right",
-  //       autoClose: 3000,
-  //     });
-  //     setShowTeamModal(false);
-  //   }
-  // };
-
-  // const addEmployee = (newEmployee) => {
-  //   // Check if employee name already exists
-  //   if (
-  //     employees.some(
-  //       (emp) => emp.name.toLowerCase() === newEmployee.name.toLowerCase()
-  //     )
-  //   ) {
-  //     toast.error(`Employee "${newEmployee.name}" already exists!`, {
-  //       position: "top-right",
-  //       autoClose: 3000,
-  //     });
-  //     return;
-  //   }
-
-  //   // Ensure unique ID for each employee
-  //   const employeeWithId = {
-  //     ...newEmployee,
-  //     id: `employee-${uuidv4()}`,
-  //     teamId: null,
-  //   };
-  //   setEmployees([...employees, employeeWithId]);
-  //   toast.success(`Employee "${newEmployee.name}" added successfully!`, {
-  //     position: "top-right",
-  //     autoClose: 3000,
-  //   });
-  //   setShowModal(false);
-  // };
-
-  // const deleteEmployee = (id) => {
-  //   // Find the employee before deletion to get their name
-  //   const employeeToDelete = employees.find((emp) => emp.id === id);
-
-  //   // Check if employee is in a team before deletion
-  //   if (employeeToDelete.teamId) {
-  //     const teamOfEmployee = teams.find(
-  //       (team) => team.id === employeeToDelete.teamId
-  //     );
-  //     toast.error(
-  //       `Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee.name}. Remove from team first.`,
-  //       {
-  //         position: "top-right",
-  //         autoClose: 4000,
-  //         type: "error",
-  //       }
-  //     );
-  //     return;
-  //   }
-
-  //   // Remove the employee
-  //   setEmployees(employees.filter((emp) => emp.id !== id));
-
-  //   // Show success toast
-  //   toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
-  //     position: "top-right",
-  //     autoClose: 3000,
-  //   });
-  // };
-
-  // const deleteTeam = (id) => {
-  //   const teamToDelete = teams.find((team) => team.id === id);
-
-  //   // Check if the team has any employees
-  //   const hasEmployees = employees.some((emp) => emp.teamId === id);
-
-  //   if (hasEmployees) {
-  //     // Show error toast if team has employees
-  //     toast.error(
-  //       `Cannot delete team "${teamToDelete.name}" with assigned employees. Please remove all employees first.`,
-  //       {
-  //         position: "top-right",
-  //         autoClose: 3000,
-  //         hideProgressBar: false,
-  //         closeOnClick: true,
-  //         pauseOnHover: true,
-  //         draggable: true,
-  //       }
-  //     );
-  //     return; // Exit the function without deleting
-  //   }
-
-  //   // Remove the team if no employees are assigned
-  //   setTeams(teams.filter((team) => team.id !== id));
-
-  //   // Show success toast
-  //   toast.success(`Team "${teamToDelete.name}" deleted successfully!`, {
-  //     position: "top-right",
-  //     autoClose: 3000,
-  //     hideProgressBar: false,
-  //     closeOnClick: true,
-  //     pauseOnHover: true,
-  //     draggable: true,
-  //   });
-  // };
-
+ 
 
   const moveEmployee = async (employeeId, targetTeamId) => {
     try {
-      // Remove 'employee-' prefix for API calls or comparisons if needed
-      const numericEmployeeId = employeeId.replace('employee-', '');
-      const numericTeamId = targetTeamId === 'unassigned' 
-        ? null 
-        : targetTeamId.replace('team-', '');
+      console.log("Moving Employee:", employeeId, "To Team:", targetTeamId);
   
-      // Call an API to update the employee's team
-      // You'll need to create this API method in your employees service
+      if (!employeeId) {
+        console.error("Error: employeeId is undefined");
+        return;
+      }
+  
+      // Convert IDs correctly
+      const numericEmployeeId = employeeId.toString();
+      const numericTeamId = targetTeamId === "unassigned" ? null : targetTeamId.toString();
+  
+      // Find the employee
+      const employee = employees.find((emp) => emp.id.toString() === numericEmployeeId);
+  
+      if (!employee) {
+        console.error("Employee not found in list:", numericEmployeeId, "Available employees:", employees);
+        return;
+      }
+  
+      // Find previous and new team names
+      const previousTeam = employee.teamId
+        ? teams.find((team) => team.id.toString() === employee.teamId.toString())?.name || "Unassigned"
+        : "Unassigned";
+  
+      const newTeam = targetTeamId === "unassigned"
+        ? "Unassigned"
+        : teams.find((team) => team.id.toString() === targetTeamId.toString())?.name || "Unknown Team";
+  
+      // Call API to update team assignment
       await updateEmployees(numericEmployeeId, numericTeamId);
   
-      // Update employee's team in local state
-      setEmployees(
-        employees.map((emp) =>
-          emp.id === employeeId
-            ? { ...emp, teamId: targetTeamId === 'unassigned' ? null : numericTeamId }
+      // Update local state
+      setEmployees((prevEmployees) =>
+        prevEmployees.map((emp) =>
+          emp.id.toString() === numericEmployeeId
+            ? { ...emp, teamId: numericTeamId }
             : emp
         )
       );
   
-      const employee = employees.find((emp) => emp.id === employeeId);
-      const previousTeam = employee.teamId
-        ? teams.find((team) => team.id === `team-${employee.teamId}`)?.name || "Unassigned"
-        : "Unassigned";
-  
-      const newTeam =
-        targetTeamId === "unassigned"
-          ? "Unassigned"
-          : teams.find((team) => team.id === targetTeamId)?.name;
-  
-      // Add toast for team movement
+      // Show toast notification
       toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
         position: "top-right",
         autoClose: 2000,
       });
     } catch (error) {
-      console.error('Error moving employee:', error);
-      toast.error('Failed to move employee', {
+      console.error("Error moving employee:", error);
+      toast.error("Failed to move employee", {
         position: "top-right",
         autoClose: 3000,
       });
     }
   };
+  
 
-
-  // const moveEmployee = (employeeId, targetTeamId) => {
-  //   const employee = employees.find((emp) => emp.id === employeeId);
-  //   const previousTeam = employee.teamId
-  //     ? teams.find((team) => team.id === employee.teamId)?.name || "Unassigned"
-  //     : "Unassigned";
-
-  //   const newTeam =
-  //     targetTeamId === "unassigned"
-  //       ? "Unassigned"
-  //       : teams.find((team) => team.id === targetTeamId)?.name;
-
-  //   setEmployees(
-  //     employees.map((emp) =>
-  //       emp.id === employeeId
-  //         ? {
-  //             ...emp,
-  //             teamId: targetTeamId === "unassigned" ? null : targetTeamId,
-  //           }
-  //         : emp
-  //     )
-  //   );
-
-  //   // Add toast for team movement
-  //   toast.info(`Moved ${employee.name} from ${previousTeam} to ${newTeam}`, {
-  //     position: "top-right",
-  //     autoClose: 2000,
-  //   });
-  // };
-
- 
-  // const handleDragEnd = (result) => {
-  //   if (!result) return;
-
-  //   const { destination, source, draggableId } = result;
-
-  //   // If there's no destination, do nothing
-  //   if (!destination) {
-  //     return;
-  //   }
-
-  //   // If the destination is the same as the source, do nothing
-  //   if (
-  //     destination.droppableId === source.droppableId &&
-  //     destination.index === source.index
-  //   ) {
-  //     return;
-  //   }
-
-  //   try {
-  //     // Extract the employee ID from the draggableId
-  //     const employeeId = draggableId;
-
-  //     // Move the employee to the new team
-  //     moveEmployee(employeeId, destination.droppableId);
-  //       // Sort both teams alphabetically
-  //       setAssignedEmployees((prev) =>
-  //         [...prev].sort((a, b) => a.name.localeCompare(b.name))
-  //       );
-  //   setEmployees((prev) =>
-  //     prev.sort((a, b) => a.name.localeCompare(b.name))
-  //   );
-  //   } catch (error) {
-  //     console.error("Error during drag and drop:", error);
-  //     toast.error("Error moving employee", {
-  //       position: "top-right",
-  //       autoClose: 3000,
-  //     });
-  //   }
-  // };
   const handleDragEnd = (result) => {
     const { source, destination, draggableId } = result;
   
     if (!destination) return; // If dropped outside a droppable area, return
   
-    // Call moveEmployee function to update the employee's team
-    moveEmployee(draggableId, destination.droppableId);
-  };
+    // Extract employee ID (assuming draggableId includes 'employee-' prefix)
+    const numericEmployeeId = draggableId.replace("employee-", "");
   
+    // Extract team ID (assuming droppableId includes 'team-' prefix or is 'unassigned')
+    const numericTeamId = destination.droppableId === "unassigned"
+      ? null
+      : destination.droppableId.replace("team-", "");
+  
+    // Move the employee to the new team
+    moveEmployee(numericEmployeeId, numericTeamId);
+  };
   
 
   // Get unassigned employees
