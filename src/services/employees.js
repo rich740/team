@@ -15,5 +15,5 @@ export const createEmployees = (values) => {
 }
 
 export const updateEmployees= (employeeId) => {
-   return axios.patch(`${Endpoint.updateEmployees}/${employeeId}`);
+   return axios.put(`${Endpoint.updateEmployees}/${employeeId}`);
 }
