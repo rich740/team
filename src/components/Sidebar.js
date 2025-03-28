@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect  } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import EmployeeModal from "./EmployeeModal";
@@ -8,14 +8,140 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { v4 as uuidv4 } from "uuid";
 import "../Library/typography.css";
+import { getTeamList, createTeam, deleteTeam } from "../services/teams";
+import { getEmployeesList, createEmployees, deleteEmployees } from "../services/employees";
 
-function Sidebar() {
+function Sidebar({ onToggleSidebar, isSidebarVisible }) {
   const [teams, setTeams] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [assignedEmployees, setAssignedEmployees] = useState([]);
-  const addTeam = (newTeamName) => {
+ 
+  // Fetch teams on component mount
+  useEffect(() => {
+    fetchTeams();
+    fetchEmployees();
+  }, []);
+
+  // Fetch teams from API
+  const fetchTeams = async () => {
+    try {
+      const response = await getTeamList({});
+      setTeams(response.data.map(team => ({
+        id: `team-${team.id}`,
+        name: team.name
+      })));
+    } catch (error) {
+      toast.error("Failed to fetch teams", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
+// Fetch employees from API
+const fetchEmployees = async () => {
+  try {
+    const response = await getEmployeesList({}); // <--- you must have this API function
+    setEmployees(response.data);
+  } catch (error) {
+    toast.error("Failed to fetch employees", {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  }
+};
+
+  const addEmployee = async (newEmployee) => {
+    // Check if employee name already exists
+    if (
+      employees.some(
+        (emp) => emp.name.toLowerCase() === newEmployee.name.toLowerCase()
+      )
+    ) {
+      toast.error(`Employee "${newEmployee.name}" already exists!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    try {
+      // Call API to create employee
+      const response = await createEmployees(newEmployee);
+      
+      // Create employee object with response ID
+      const employeeWithId = {
+        ...newEmployee,
+        id: `employee-${response.id}`,
+        teamId: null,
+      };
+      
+      // Update local state
+      setEmployees([...employees, employeeWithId]);
+      
+      toast.success(`Employee "${newEmployee.name}" added successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      setShowModal(false);
+    } catch (error) {
+      toast.error("Failed to add employee", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
+  const handleDeleteEmployee = async (id) => {
+    const employeeToDelete = employees.find((emp) => emp.id === id);
+
+    if (!employeeToDelete) {
+      toast.error("Employee not found!", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    if (employeeToDelete.teamId) {
+      const teamOfEmployee = teams.find(
+        (team) => team.id === employeeToDelete.teamId
+      );
+      toast.error(
+        `Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee?.name || "unknown team"}. Remove from team first.`,
+        {
+          position: "top-right",
+          autoClose: 4000,
+          type: "error",
+        }
+      );
+      return;
+    }
+
+    try {
+      // Call API with actual numeric ID directly
+      await deleteEmployees(employeeToDelete.id);
+
+      // Remove employee from state
+      setEmployees(employees.filter((emp) => emp.id !== employeeToDelete.id));
+
+      toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      console.error('Delete employee error:', error);
+      toast.error("Failed to delete employee", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+};
+
+
+  const addTeam = async (newTeamName) => {
     if (newTeamName) {
       // Check if team name already exists
       if (
@@ -30,84 +156,49 @@ function Sidebar() {
         return;
       }
 
-      // Ensure unique ID for each team
-      const newTeam = {
-        id: `team-${uuidv4()}`,
-        name: newTeamName,
-      };
-      setTeams([...teams, newTeam]);
-      toast.success(`Team "${newTeamName}" added successfully!`, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      setShowTeamModal(false);
-    }
-  };
-
-  const addEmployee = (newEmployee) => {
-    // Check if employee name already exists
-    if (
-      employees.some(
-        (emp) => emp.name.toLowerCase() === newEmployee.name.toLowerCase()
-      )
-    ) {
-      toast.error(`Employee "${newEmployee.name}" already exists!`, {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    // Ensure unique ID for each employee
-    const employeeWithId = {
-      ...newEmployee,
-      id: `employee-${uuidv4()}`,
-      teamId: null,
-    };
-    setEmployees([...employees, employeeWithId]);
-    toast.success(`Employee "${newEmployee.name}" added successfully!`, {
-      position: "top-right",
-      autoClose: 3000,
-    });
-    setShowModal(false);
-  };
-
-  const deleteEmployee = (id) => {
-    // Find the employee before deletion to get their name
-    const employeeToDelete = employees.find((emp) => emp.id === id);
-
-    // Check if employee is in a team before deletion
-    if (employeeToDelete.teamId) {
-      const teamOfEmployee = teams.find(
-        (team) => team.id === employeeToDelete.teamId
-      );
-      toast.error(
-        `Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee.name}. Remove from team first.`,
-        {
+      try {
+        // Call API to create team
+        const response = await createTeam({ name: newTeamName });
+        
+        // Create team object with response ID
+        const newTeam = {
+          id: `team-${response.data.id}`,
+          name: newTeamName,
+        };
+        
+        // Update local state
+        setTeams([...teams, newTeam]);
+        
+        toast.success(`Team "${newTeamName}" added successfully!`, {
           position: "top-right",
-          autoClose: 4000,
-          type: "error",
-        }
-      );
-      return;
+          autoClose: 3000,
+        });
+        setShowTeamModal(false);
+      } catch (error) {
+        toast.error("Failed to add team", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
     }
-
-    // Remove the employee
-    setEmployees(employees.filter((emp) => emp.id !== id));
-
-    // Show success toast
-    toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
-      position: "top-right",
-      autoClose: 3000,
-    });
   };
 
-  const deleteTeam = (id) => {
+  const deleteTeamHandler = async (id) => {
+    // Find the team to delete
     const teamToDelete = teams.find((team) => team.id === id);
-
+    
+    // If no team found, exit early
+    if (!teamToDelete) {
+      toast.error("Team not found", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+  
     // Check if the team has any employees
     const hasEmployees = employees.some((emp) => emp.teamId === id);
-
+  
     if (hasEmployees) {
       // Show error toast if team has employees
       toast.error(
@@ -115,28 +206,181 @@ function Sidebar() {
         {
           position: "top-right",
           autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
         }
       );
-      return; // Exit the function without deleting
+      return;
     }
-
-    // Remove the team if no employees are assigned
-    setTeams(teams.filter((team) => team.id !== id));
-
-    // Show success toast
-    toast.success(`Team "${teamToDelete.name}" deleted successfully!`, {
-      position: "top-right",
-      autoClose: 3000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
+  
+    try {
+      // Ensure we're using the numeric ID for the API call
+      const teamNumericId = id.replace('team-', '');
+  
+      // Call API to delete team
+      await deleteTeam(teamNumericId);
+  
+      // Remove the team from local state
+      setTeams(teams.filter((team) => team.id !== id));
+  
+      // Show success toast
+      toast.success(`Team "${teamToDelete.name}" deleted successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    } catch (error) {
+      // More detailed error handling
+      console.error('Delete team error:', error);
+  
+      // Check for specific error responses
+      if (error.response) {
+        // Server responded with an error status
+        toast.error(
+          error.response.data?.message || 
+          `Failed to delete team. Status: ${error.response.status}`,
+          {
+            position: "top-right",
+            autoClose: 3000,
+          }
+        );
+      } else if (error.request) {
+        // Request was made but no response received
+        toast.error("No response from server. Please check your connection.", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      } else {
+        // Something happened in setting up the request
+        toast.error("Error processing team deletion request", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+      }
+    }
   };
+
+
+
+  // const addTeam = (newTeamName) => {
+  //   if (newTeamName) {
+  //     // Check if team name already exists
+  //     if (
+  //       teams.some(
+  //         (team) => team.name.toLowerCase() === newTeamName.toLowerCase()
+  //       )
+  //     ) {
+  //       toast.error(`Team "${newTeamName}" already exists!`, {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //       });
+  //       return;
+  //     }
+
+  //     // Ensure unique ID for each team
+  //     const newTeam = {
+  //       id: `team-${uuidv4()}`,
+  //       name: newTeamName,
+  //     };
+  //     setTeams([...teams, newTeam]);
+  //     toast.success(`Team "${newTeamName}" added successfully!`, {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //     });
+  //     setShowTeamModal(false);
+  //   }
+  // };
+
+  // const addEmployee = (newEmployee) => {
+  //   // Check if employee name already exists
+  //   if (
+  //     employees.some(
+  //       (emp) => emp.name.toLowerCase() === newEmployee.name.toLowerCase()
+  //     )
+  //   ) {
+  //     toast.error(`Employee "${newEmployee.name}" already exists!`, {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //     });
+  //     return;
+  //   }
+
+  //   // Ensure unique ID for each employee
+  //   const employeeWithId = {
+  //     ...newEmployee,
+  //     id: `employee-${uuidv4()}`,
+  //     teamId: null,
+  //   };
+  //   setEmployees([...employees, employeeWithId]);
+  //   toast.success(`Employee "${newEmployee.name}" added successfully!`, {
+  //     position: "top-right",
+  //     autoClose: 3000,
+  //   });
+  //   setShowModal(false);
+  // };
+
+  // const deleteEmployee = (id) => {
+  //   // Find the employee before deletion to get their name
+  //   const employeeToDelete = employees.find((emp) => emp.id === id);
+
+  //   // Check if employee is in a team before deletion
+  //   if (employeeToDelete.teamId) {
+  //     const teamOfEmployee = teams.find(
+  //       (team) => team.id === employeeToDelete.teamId
+  //     );
+  //     toast.error(
+  //       `Cannot delete employee "${employeeToDelete.name}" from ${teamOfEmployee.name}. Remove from team first.`,
+  //       {
+  //         position: "top-right",
+  //         autoClose: 4000,
+  //         type: "error",
+  //       }
+  //     );
+  //     return;
+  //   }
+
+  //   // Remove the employee
+  //   setEmployees(employees.filter((emp) => emp.id !== id));
+
+  //   // Show success toast
+  //   toast.success(`Employee "${employeeToDelete.name}" deleted successfully!`, {
+  //     position: "top-right",
+  //     autoClose: 3000,
+  //   });
+  // };
+
+  // const deleteTeam = (id) => {
+  //   const teamToDelete = teams.find((team) => team.id === id);
+
+  //   // Check if the team has any employees
+  //   const hasEmployees = employees.some((emp) => emp.teamId === id);
+
+  //   if (hasEmployees) {
+  //     // Show error toast if team has employees
+  //     toast.error(
+  //       `Cannot delete team "${teamToDelete.name}" with assigned employees. Please remove all employees first.`,
+  //       {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //         hideProgressBar: false,
+  //         closeOnClick: true,
+  //         pauseOnHover: true,
+  //         draggable: true,
+  //       }
+  //     );
+  //     return; // Exit the function without deleting
+  //   }
+
+  //   // Remove the team if no employees are assigned
+  //   setTeams(teams.filter((team) => team.id !== id));
+
+  //   // Show success toast
+  //   toast.success(`Team "${teamToDelete.name}" deleted successfully!`, {
+  //     position: "top-right",
+  //     autoClose: 3000,
+  //     hideProgressBar: false,
+  //     closeOnClick: true,
+  //     pauseOnHover: true,
+  //     draggable: true,
+  //   });
+  // };
 
   const moveEmployee = (employeeId, targetTeamId) => {
     const employee = employees.find((emp) => emp.id === employeeId);
@@ -260,6 +504,7 @@ function Sidebar() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="row g-4">
           {/* Left sidebar */}
+          {isSidebarVisible && (
           <div className="col-md-4">
             {/* Teams management */}
             <div className="card shadow-sm border-dark mb-4">
@@ -292,7 +537,7 @@ function Sidebar() {
                         <span className="font-medium text-base">{team.name}</span>
                         <button
                           className="btn btn-sm btn-outline-danger"
-                          onClick={() => deleteTeam(team.id)}
+                          onClick={() =>deleteTeamHandler(team.id)}
                         >
                           <i
                             className="bi bi-trash"
@@ -374,7 +619,7 @@ function Sidebar() {
                                   <td>
                                     <button
                                       className="btn btn-sm btn-outline-danger"
-                                      onClick={() => deleteEmployee(emp.id)}
+                                      onClick={() => handleDeleteEmployee(emp.id)}
                                     >
                                       <i className="bi bi-trash"></i>
                                     </button>
@@ -392,9 +637,9 @@ function Sidebar() {
               </Droppable>
             </div>
           </div>
-
+          )}
           {/* Main Team Container */}
-          <div className="col-md-8">
+          <div  className={`${isSidebarVisible ? 'col-md-8' : 'col-md-12'}`}>
       <div className="card shadow-sm border-dark">
         <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
           <h5 className="mb-1 font-semibold">Team Planning</h5>
