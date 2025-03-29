@@ -21,7 +21,7 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.BIGINT,
         allowNull: true,
       },
-      teamid: {
+      teamId: {
         type: DataTypes.BIGINT,
         allowNull: true,
       },
