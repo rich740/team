@@ -282,10 +282,6 @@ const fetchEmployees = async () => {
     }
   };
 
-
-
- 
-
   const moveEmployee = async (employeeId, targetTeamId) => {
     try {
       console.log("Moving Employee:", employeeId, "To Team:", targetTeamId);
@@ -295,26 +291,31 @@ const fetchEmployees = async () => {
         return;
       }
   
-      // Convert IDs correctly
-      const numericEmployeeId = employeeId.toString();
-      const numericTeamId = targetTeamId === "unassigned" ? null : targetTeamId.toString();
+      // Extract the numeric employee ID by removing the 'employee-' prefix
+      const numericEmployeeId = employeeId.replace("employee-", "");
+  
+      // Handle target team ID based on destination
+      let numericTeamId = null;
+      if (targetTeamId !== "unassigned") {
+        numericTeamId = targetTeamId.replace("team-", "");
+      }
   
       // Find the employee
-      const employee = employees.find((emp) => emp.id.toString() === numericEmployeeId);
+      const employee = employees.find((emp) => emp.id === employeeId);
   
       if (!employee) {
-        console.error("Employee not found in list:", numericEmployeeId, "Available employees:", employees);
+        console.error("Employee not found:", employeeId);
         return;
       }
   
       // Find previous and new team names
       const previousTeam = employee.teamId
-        ? teams.find((team) => team.id.toString() === employee.teamId.toString())?.name || "Unassigned"
+        ? teams.find((team) => team.id === employee.teamId)?.name || "Unassigned"
         : "Unassigned";
   
       const newTeam = targetTeamId === "unassigned"
         ? "Unassigned"
-        : teams.find((team) => team.id.toString() === targetTeamId.toString())?.name || "Unknown Team";
+        : teams.find((team) => team.id === targetTeamId)?.name || "Unknown Team";
   
       // Call API to update team assignment
       await updateEmployees(numericEmployeeId, numericTeamId);
@@ -322,8 +323,8 @@ const fetchEmployees = async () => {
       // Update local state
       setEmployees((prevEmployees) =>
         prevEmployees.map((emp) =>
-          emp.id.toString() === numericEmployeeId
-            ? { ...emp, teamId: numericTeamId }
+          emp.id === employeeId
+            ? { ...emp, teamId: targetTeamId === "unassigned" ? null : targetTeamId }
             : emp
         )
       );
@@ -342,22 +343,31 @@ const fetchEmployees = async () => {
     }
   };
   
-
   const handleDragEnd = (result) => {
     const { source, destination, draggableId } = result;
   
-    if (!destination) return; // If dropped outside a droppable area, return
+    // If dropped outside a droppable area or in the same position, return
+    if (!destination) return;
+    if (
+      source.droppableId === destination.droppableId &&
+      source.index === destination.index
+    ) {
+      return;
+    }
   
-    // Extract employee ID (assuming draggableId includes 'employee-' prefix)
-    const numericEmployeeId = draggableId.replace("employee-", "");
+    // Extract employee ID from draggableId
+    const employeeId = draggableId;
   
-    // Extract team ID (assuming droppableId includes 'team-' prefix or is 'unassigned')
-    const numericTeamId = destination.droppableId === "unassigned"
-      ? null
-      : destination.droppableId.replace("team-", "");
+    // Determine destination team ID
+    let destinationTeamId;
+    if (destination.droppableId === "unassigned") {
+      destinationTeamId = "unassigned";
+    } else {
+      destinationTeamId = destination.droppableId;
+    }
   
     // Move the employee to the new team
-    moveEmployee(numericEmployeeId, numericTeamId);
+    moveEmployee(employeeId, destinationTeamId);
   };
   
 
@@ -472,8 +482,7 @@ const fetchEmployees = async () => {
                   <i className="bi bi-person-plus me-1"></i>Add Employee
                 </button>
               </div>
-<Droppable droppableId={teams.id} type="EMPLOYEE">
-
+              <Droppable droppableId="unassigned" type="EMPLOYEE">
                 {(provided, snapshot) => (
                   <div
                     ref={provided.innerRef}
@@ -506,8 +515,7 @@ const fetchEmployees = async () => {
                           {[...unassignedEmployees]
                             .sort((a, b) => a.name.localeCompare(b.name))
                           .map((emp, index) => (
-                            <Draggable key={emp.id} draggableId={emp.id.toString()} index={index}>
-
+                            <Draggable key={emp.id} draggableId={emp.id} index={index}>
                               {(provided, snapshot) => (
                                 <tr
                                   ref={provided.innerRef}
@@ -546,81 +554,81 @@ const fetchEmployees = async () => {
           </div>
           )}
           {/* Main Team Container */}
-          <div  className={`${isSidebarVisible ? 'col-md-8' : 'col-md-12'}`}>
-      <div className="card shadow-sm border-dark">
-        <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
-          <h5 className="mb-1 font-semibold">Team Planning</h5>
-          <i className="bi bi-kanban" style={{ fontSize: '1.8rem' }}></i>
-        </div>
-        <div className="card-body bg-light">
-          <div className="d-flex flex-row overflow-auto gap-4 p-3">
-            {teamEmployeesList.map(({ team, employees: teamEmployees, totalCost, averageCost }) => (
-              <div
-                key={team.id}
-                className="card border-0 shadow-lg rounded-4"
-                style={{ minWidth: '250px', maxWidth: '250px', backgroundColor: '#ffffff' }}
-              >
-                <div className="card-header bg-success text-white text-center rounded-top-4">
-                  <h5 className="mb-0 font-semibold">{team.name}</h5>
-                </div>
-                <Droppable droppableId={team.id} type="EMPLOYEE">
-                  {(provided, snapshot) => (
+          <div className={`${isSidebarVisible ? 'col-md-8' : 'col-md-12'}`}>
+            <div className="card shadow-sm border-dark">
+              <div className="card-header text-black d-flex justify-content-between align-items-center text-black">
+                <h5 className="mb-1 font-semibold">Team Planning</h5>
+                <i className="bi bi-kanban" style={{ fontSize: '1.8rem' }}></i>
+              </div>
+              <div className="card-body bg-light">
+                <div className="d-flex flex-row overflow-auto gap-4 p-3">
+                  {teamEmployeesList.map(({ team, employees: teamEmployees, totalCost, averageCost }) => (
                     <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="card-body p-0"
-                      style={{
-                        minHeight: '250px',
-                        backgroundColor: snapshot.isDraggingOver ? '#d1e7dd' : '#ffffff',
-                        transition: 'background-color 0.3s ease',
-                      }}
+                      key={team.id}
+                      className="card border-0 shadow-lg rounded-4"
+                      style={{ minWidth: '250px', maxWidth: '250px', backgroundColor: '#ffffff' }}
                     >
-                      {teamEmployees.length === 0 ? (
-                        <p className="text-muted text-center p-3">Drag employees here</p>
-                      ) : (
-                        <table className="table table-hover mb-0">
-                          <tbody>
-                            {teamEmployees.map((emp, index) => (
-                              <Draggable key={emp.id} draggableId={emp.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <tr
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    style={{
-                                      ...getDragStyle(snapshot.isDragging, provided.draggableProps.style),
-                                      backgroundColor: snapshot.isDragging ? '#e9ecef' : 'white',
-                                    }}
-                                  >
-                                    <td  className="text-sm">{emp.name}</td>
-                                    <td  className="text-sm">{emp.skill}</td>
-                                    <td  className="text-sm">${emp.cost}</td>
-                                  </tr>
-                                )}
-                              </Draggable>
-                            ))}
+                      <div className="card-header bg-success text-white text-center rounded-top-4">
+                        <h5 className="mb-0 font-semibold">{team.name}</h5>
+                      </div>
+                      <Droppable droppableId={team.id} type="EMPLOYEE">
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="card-body p-0"
+                            style={{
+                              minHeight: '250px',
+                              backgroundColor: snapshot.isDraggingOver ? '#d1e7dd' : '#ffffff',
+                              transition: 'background-color 0.3s ease',
+                            }}
+                          >
+                            {teamEmployees.length === 0 ? (
+                              <p className="text-muted text-center p-3">Drag employees here</p>
+                            ) : (
+                              <table className="table table-hover mb-0">
+                                <tbody>
+                                  {teamEmployees.map((emp, index) => (
+                                    <Draggable key={emp.id} draggableId={emp.id} index={index}>
+                                      {(provided, snapshot) => (
+                                        <tr
+                                          ref={provided.innerRef}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                          style={{
+                                            ...getDragStyle(snapshot.isDragging, provided.draggableProps.style),
+                                            backgroundColor: snapshot.isDragging ? '#e9ecef' : 'white',
+                                          }}
+                                        >
+                                          <td className="text-sm">{emp.name}</td>
+                                          <td className="text-sm">{emp.skill}</td>
+                                          <td className="text-sm">${emp.cost}</td>
+                                        </tr>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
                             {provided.placeholder}
-                          </tbody>
-                        </table>
-                      )}
+                          </div>
+                        )}
+                      </Droppable>
+                      <div className="card-footer bg-light rounded-bottom-4">
+                        <div className="d-flex justify-content-between">
+                          <small className="text-muted text-xs">Employees: {teamEmployees.length}</small>
+                          <small className="text-muted text-xs text-end">
+                            Total Cost: ${totalCost.toFixed(2)}<br />
+                            Average Cost: ${averageCost.toFixed(2)}
+                          </small>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </Droppable>
-                <div className="card-footer bg-light rounded-bottom-4">
-                  <div className="d-flex justify-content-between">
-                    <small className="text-muted text-xs">Employees: {teamEmployees.length}</small>
-                    <small className="text-muted text-xs text-end">
-                      Total Cost: ${totalCost.toFixed(2)}<br />
-                      Average Cost: ${averageCost.toFixed(2)}
-                    </small>
-                  </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
         </div>
       </DragDropContext>
 
