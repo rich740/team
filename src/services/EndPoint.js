@@ -9,6 +9,6 @@ createTeam: '/api/team',
 getEmployeesList:'/api/getemployees',
 createEmployees:'/api/employees',
 deleteEmployees:'/api/deleteemployees',
-updateEmployees:'/updateemployees',
+updateEmployees:'/api/updateemployees',
 }
 export default Endpoint;
