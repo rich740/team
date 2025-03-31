@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import './App.css';
-
 import './interceptor';
-
 
 function App() {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -15,24 +13,16 @@ function App() {
   };
 
   return (
-    <Router>
-    
+    <BrowserRouter basename='/teamManagement'> 
+    {/* <BrowserRouter>  */}
       <div className="main-content">
-        {/* <TeamManagementApp /> */}
-       <div>
-      <Header onToggleSidebar={handleToggleSidebar} />
-      <Sidebar 
-        isSidebarVisible={isSidebarVisible} 
-        onToggleSidebar={handleToggleSidebar}
-      />
-    </div>
-        <div className="content">
-          <Routes>
-          
-          </Routes>
-        </div>
+        <Header onToggleSidebar={handleToggleSidebar} />
+        <Sidebar 
+          isSidebarVisible={isSidebarVisible} 
+          onToggleSidebar={handleToggleSidebar}
+        />
       </div>
-    </Router>
+    </BrowserRouter> 
   );
 }
 

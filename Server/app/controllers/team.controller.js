@@ -21,6 +21,7 @@ exports.createTeam = async (req, res) => {
     const newTeam = await Team.create({ name });
 
     res.status(201).json({ 
+      success: true,
       message: "Team created successfully", 
       team: newTeam 
     });

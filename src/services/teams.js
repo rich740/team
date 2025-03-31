@@ -10,6 +10,16 @@ export const createTeam = (values) => {
 }
 
 
+// export const deleteTeam = (teamId) => {
+//    console.log(teamId, "teamId")
+//    return axios.delete(`${Endpoint.deleteTeam}/${teamId}`);
+// }
+
 export const deleteTeam = (teamId) => {
+   console.log(teamId, "teamId");
+   if (!teamId) {
+     console.error("Team ID is undefined");
+     return Promise.reject(new Error("Team ID is required"));
+   }
    return axios.delete(`${Endpoint.deleteTeam}/${teamId}`);
-}
+ }

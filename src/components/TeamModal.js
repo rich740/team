@@ -4,6 +4,7 @@ const AddTeamModal = ({ onClose, onAdd }) => {
   const [newMemberName, setNewMemberName] = useState('');
 
   const handleAdd = () => {
+    console.log("999999999999999999999")
     if (newMemberName.trim()) {
       onAdd(newMemberName);
       onClose(); // Close the modal after adding the team
