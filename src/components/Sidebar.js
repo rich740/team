@@ -8,12 +8,18 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import { v4 as uuidv4 } from "uuid";
 import "../Library/typography.css";
-import { getTeamList, createTeam, deleteTeam } from "../services/teams";
+import {
+  getTeamList,
+  createTeam,
+  deleteTeam,
+  editTeam,
+} from "../services/teams";
 import {
   getEmployeesList,
   createEmployees,
   deleteEmployees,
   updateEmployees,
+  editEmployees,
 } from "../services/employees";
 
 function Sidebar({ onToggleSidebar, isSidebarVisible }) {
@@ -22,7 +28,9 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
   const [showModal, setShowModal] = useState(false);
   const [showTeamModal, setShowTeamModal] = useState(false);
   const [assignedEmployees, setAssignedEmployees] = useState([]);
-
+  const [editingEmployee, setEditingEmployee] = useState(null);
+  const [editingTeam, setEditingTeam] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   // Fetch teams on component mount
   useEffect(() => {
     fetchTeams();
@@ -34,14 +42,13 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
     try {
       const response = await getTeamList({});
       // console.log("response.data.data===========>>>>>>>>>>>>>",response.data.data)
-      console.log("response.data===========>>>>>>>>>>>>>",response.data)
+      console.log("response.data===========>>>>>>>>>>>>>", response.data);
       setTeams(
         response.data.map((team) => ({
           id: `team-${team.id}`,
           name: team.name,
         }))
       );
-
     } catch (error) {
       toast.error("Failed to fetch teams", {
         position: "top-right",
@@ -101,10 +108,33 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
       // Call API to create employee
       const response = await createEmployees(newEmployee);
 
+      // Add logging to see the actual structure
+      console.log("Create employee API response:", response);
+
+      // Check for the actual structure of the ID in the response
+      let employeeId;
+      if (
+        response.data &&
+        response.data.employee &&
+        response.data.employee.id
+      ) {
+        employeeId = response.data.employee.id;
+      } else if (response.employee && response.employee.id) {
+        employeeId = response.employee.id;
+      } else if (response.id) {
+        employeeId = response.id;
+      } else {
+        console.error("Unable to find employee ID in response:", response);
+        toast.error("Failed to retrieve employee ID from server response", {
+          position: "top-right",
+          autoClose: 3000,
+        });
+        return;
+      }
       // Create employee object with response ID
       const employeeWithId = {
         ...newEmployee,
-        id: `employee-${response.id}`,
+        id: `employee-${employeeId}`,
         teamId: null,
       };
 
@@ -116,6 +146,7 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
         autoClose: 3000,
       });
       setShowModal(false);
+      await fetchEmployees();
     } catch (error) {
       toast.error("Failed to add employee", {
         position: "top-right",
@@ -123,6 +154,60 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
       });
     }
   };
+
+  const editEmployeeHandler = (employeeId) => {
+    const employeeToEdit = employees.find((emp) => emp.id === employeeId);
+    if (employeeToEdit) {
+      setEditingEmployee(employeeToEdit);
+      setIsEditing(true);
+      setShowModal(true);
+    }
+  };
+
+  const editEmployeeSubmit = async (updatedEmployee) => {
+    try {
+      // Extract numeric ID
+      const numericId = updatedEmployee.id.replace("employee-", "");
+      
+      // Prepare data for API call
+      const employeeData = {
+        name: updatedEmployee.name,
+        skill: updatedEmployee.skill,
+        cost: updatedEmployee.cost,
+        teamId: updatedEmployee.teamId ? updatedEmployee.teamId.replace("team-", "") : null
+      };
+
+      // Call API to update employee
+      await editEmployees(numericId, employeeData);
+
+     // Update local state - make sure to keep the original format with prefixes for local state
+     setEmployees(employees.map(emp => 
+      emp.id === updatedEmployee.id ? {
+        ...updatedEmployee,
+        // Ensure teamId format is consistent in local state
+        teamId: updatedEmployee.teamId ? updatedEmployee.teamId : null
+      } : emp
+    ));
+
+      toast.success(`Employee "${updatedEmployee.name}" updated successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+
+      // Reset editing state
+      setEditingEmployee(null);
+      setIsEditing(false);
+      setShowModal(false);
+      await fetchEmployees();
+    } catch (error) {
+      console.error("Edit employee error:", error);
+      toast.error("Failed to update employee", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
 
   const deleteEmployee = async (id) => {
     if (!id) {
@@ -182,8 +267,9 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
     }
   };
 
+ 
   const addTeam = async (newTeamName) => {
-    console.log("addxxxxxxxxxxxxx------------------")
+    console.log("addxxxxxxxxxxxxx------------------");
     if (newTeamName) {
       // Check if team name already exists
       if (
@@ -201,13 +287,11 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
       try {
         // Call API to create team
         const response = await createTeam({ name: newTeamName });
-       
-        // if (!response?.data?.id) {
-        //   throw new Error("Invalid team ID returned from server.");
-        // }
-    
+
         // Create team object with response ID and ensure it's a proper string
-        const teamId = response.data.team.id ? response.data.team.id.toString() : null;
+        const teamId = response.data.team.id
+          ? response.data.team.id.toString()
+          : null;
 
         if (!teamId) {
           toast.error("Invalid team ID returned from server.");
@@ -220,7 +304,7 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
         };
 
         // Update local state
-        setTeams(prevTeams => [...prevTeams, newTeam]);
+        setTeams((prevTeams) => [...prevTeams, newTeam]);
 
         toast.success(`Team "${newTeamName}" added successfully!`, {
           position: "top-right",
@@ -237,6 +321,58 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
           autoClose: 3000,
         });
       }
+    }
+  };
+
+  const editTeamHandler = (teamId) => {
+    const teamToEdit = teams.find((team) => team.id === teamId);
+    if (teamToEdit) {
+      setEditingTeam(teamToEdit);
+      setIsEditing(true);
+      setShowTeamModal(true);
+    }
+  };
+
+  const editTeamSubmit = async (updatedTeam) => {
+    try {
+      // Extract numeric ID
+      const numericId = updatedTeam.id.replace("team-", "");
+      
+      // Prepare the data to send
+      const teamData = { name: updatedTeam.name };
+      
+      console.log("Editing team:", numericId, "with data:", teamData);
+      
+      // Call API to update team with better error handling
+      const response = await editTeam(numericId, teamData);
+      console.log("Update response:", response); // Log the response
+      
+      // Update local state
+      setTeams(teams.map(team => 
+        team.id === updatedTeam.id ? updatedTeam : team
+      ));
+      
+      toast.success(`Team "${updatedTeam.name}" updated successfully!`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      
+      // Reset editing state
+      setEditingTeam(null);
+      setIsEditing(false);
+      setShowTeamModal(false);
+      
+      // Refresh teams list
+      await fetchTeams();
+    } catch (error) {
+      console.error("Edit team error:", error.response ? error.response.data : error);
+      
+      // Show more specific error message
+      const errorMessage = error.response?.data?.message || "Failed to update team";
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
   };
 
@@ -335,12 +471,112 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
     }
   };
 
-  const moveEmployee = async (employeeId, targetTeamId) => {
-    console.log("targetTeamId----------------", targetTeamId);
-    try {
-      console.log("Moving Employee",employeeId )
-      console.log("Moving Employee:", employeeId, "To Team:", targetTeamId);
+  // const moveEmployee = async (employeeId, targetTeamId) => {
+  //   try {
+  //     console.log("Moving Employee:", employeeId, "To Team:", targetTeamId);
 
+  //     // Check for invalid employeeId
+  //     if (!employeeId || employeeId === "employee-undefined") {
+  //       console.error("Invalid employee ID");
+  //       toast.error("Invalid employee ID. Cannot move employee.", {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //       });
+  //       return;
+  //     }
+
+  //     // Find the employee first
+  //     const employee = employees.find((emp) => emp.id === employeeId);
+  //     if (!employee) {
+  //       console.error("Employee not found:", employeeId);
+  //       toast.error("Employee not found. Cannot move employee.", {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //       });
+  //       return;
+  //     }
+
+  //     // Handle special case for unassigned
+  //     if (targetTeamId === "unassigned") {
+  //       // Extract numeric employee ID
+  //       const numericEmployeeId = employeeId.replace("employee-", "");
+
+  //       // Previous team for toast message
+  //       const previousTeam = employee.teamId
+  //         ? teams.find((team) => team.id === employee.teamId)?.name ||
+  //           "Unknown Team"
+  //         : "Unassigned";
+
+  //       // Update employee in the backend - null teamId for unassigned
+  //       await updateEmployees(numericEmployeeId, null);
+
+  //       // Update local state
+  //       setEmployees((prevEmployees) =>
+  //         prevEmployees.map((emp) =>
+  //           emp.id === employeeId ? { ...emp, teamId: null } : emp
+  //         )
+  //       );
+
+  //       toast.info(
+  //         `Moved ${employee.name} from ${previousTeam} to Unassigned`,
+  //         {
+  //           position: "top-right",
+  //           autoClose: 2000,
+  //         }
+  //       );
+
+  //       return;
+  //     }
+
+  //     // For team assignments - validate target team exists
+  //     const targetTeam = teams.find((team) => team.id === targetTeamId);
+  //     if (!targetTeam) {
+  //       console.error("Target team not found:", targetTeamId);
+  //       toast.error("Target team not found. Cannot move employee.", {
+  //         position: "top-right",
+  //         autoClose: 3000,
+  //       });
+  //       return;
+  //     }
+
+  //     // Extract numeric IDs
+  //     const numericEmployeeId = employeeId.replace("employee-", "");
+  //     const numericTeamId = targetTeamId.replace("team-", "");
+
+  //     // Get team names for toast
+  //     const previousTeam = employee.teamId
+  //       ? teams.find((team) => team.id === employee.teamId)?.name ||
+  //         "Unknown Team"
+  //       : "Unassigned";
+
+  //     // Update employee in the backend
+  //     await updateEmployees(numericEmployeeId, numericTeamId);
+
+  //     // Update local state
+  //     setEmployees((prevEmployees) =>
+  //       prevEmployees.map((emp) =>
+  //         emp.id === employeeId ? { ...emp, teamId: targetTeamId } : emp
+  //       )
+  //     );
+
+  //     toast.info(
+  //       `Moved ${employee.name} from ${previousTeam} to ${targetTeam.name}`,
+  //       {
+  //         position: "top-right",
+  //         autoClose: 2000,
+  //       }
+  //     );
+  //   } catch (error) {
+  //     console.error("Error moving employee:", error);
+  //     toast.error("Failed to move employee", {
+  //       position: "top-right",
+  //       autoClose: 3000,
+  //     });
+  //   }
+  // };
+
+  const moveEmployee = async (employeeId, targetTeamId) => {
+    try {
       // Check for invalid employeeId
       if (!employeeId || employeeId === "employee-undefined") {
         console.error("Invalid employee ID");
@@ -362,26 +598,30 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
         return;
       }
 
+      // Extract numeric employee ID
+      const numericEmployeeId = employeeId.replace("employee-", "");
+
+      // Previous team for toast message
+      const previousTeam = employee.teamId
+        ? teams.find((team) => team.id === employee.teamId)?.name || "Unknown Team"
+        : "Unassigned";
+
+      // Update local state first to avoid flickering UI
+      setEmployees((prevEmployees) =>
+        prevEmployees.map((emp) =>
+          emp.id === employeeId 
+            ? { 
+                ...emp, 
+                teamId: targetTeamId === "unassigned" ? null : targetTeamId 
+              } 
+            : emp
+        )
+      );
+
       // Handle special case for unassigned
       if (targetTeamId === "unassigned") {
-        // Extract numeric employee ID
-        const numericEmployeeId = employeeId.replace("employee-", "");
-
-        // Previous team for toast message
-        const previousTeam = employee.teamId
-          ? teams.find((team) => team.id === employee.teamId)?.name ||
-            "Unknown Team"
-          : "Unassigned";
-
         // Update employee in the backend - null teamId for unassigned
         await updateEmployees(numericEmployeeId, null);
-
-        // Update local state
-        setEmployees((prevEmployees) =>
-          prevEmployees.map((emp) =>
-            emp.id === employeeId ? { ...emp, teamId: null } : emp
-          )
-        );
 
         toast.info(
           `Moved ${employee.name} from ${previousTeam} to Unassigned`,
@@ -390,7 +630,7 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
             autoClose: 2000,
           }
         );
-
+        
         return;
       }
 
@@ -402,28 +642,22 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
           position: "top-right",
           autoClose: 3000,
         });
+        
+        // Revert state change since target team doesn't exist
+        setEmployees((prevEmployees) =>
+          prevEmployees.map((emp) =>
+            emp.id === employeeId ? { ...emp, teamId: employee.teamId } : emp
+          )
+        );
+        
         return;
       }
 
-      // Extract numeric IDs
-      const numericEmployeeId = employeeId.replace("employee-", "");
+      // Extract numeric team ID
       const numericTeamId = targetTeamId.replace("team-", "");
-
-      // Get team names for toast
-      const previousTeam = employee.teamId
-        ? teams.find((team) => team.id === employee.teamId)?.name ||
-          "Unknown Team"
-        : "Unassigned";
 
       // Update employee in the backend
       await updateEmployees(numericEmployeeId, numericTeamId);
-
-      // Update local state
-      setEmployees((prevEmployees) =>
-        prevEmployees.map((emp) =>
-          emp.id === employeeId ? { ...emp, teamId: targetTeamId } : emp
-        )
-      );
 
       toast.info(
         `Moved ${employee.name} from ${previousTeam} to ${targetTeam.name}`,
@@ -434,6 +668,18 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
       );
     } catch (error) {
       console.error("Error moving employee:", error);
+      
+      // Find the employee to restore original state
+      const employee = employees.find((emp) => emp.id === employeeId);
+      if (employee) {
+        // Restore original state in case of error
+        setEmployees((prevEmployees) =>
+          prevEmployees.map((emp) =>
+            emp.id === employeeId ? { ...emp, teamId: employee.teamId } : emp
+          )
+        );
+      }
+      
       toast.error("Failed to move employee", {
         position: "top-right",
         autoClose: 3000,
@@ -443,13 +689,6 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
 
   const handleDragEnd = (result) => {
     const { source, destination, draggableId } = result;
-    console.log("source------------------------", source);
-    console.log("source.droppableId------------------------", source.droppableId);
-    console.log("source.index------------------------", source.index);
-    console.log("destination------------------------", destination);
-    console.log("destination.droppableId------------------------", destination.droppableId)
-    console.log("destination.index------------------------", destination.index)
-
     // If dropped outside a droppable area or in the same position, return
     if (!destination) return;
     if (
@@ -494,6 +733,20 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
 
     // Move the employee to the new team
     moveEmployee(employeeId, destinationTeamId);
+  };
+
+
+   // Handle modal close for both employee and team modals
+   const handleEmployeeModalClose = () => {
+    setShowModal(false);
+    setEditingEmployee(null);
+    setIsEditing(false);
+  };
+
+  const handleTeamModalClose = () => {
+    setShowTeamModal(false);
+    setEditingTeam(null);
+    setIsEditing(false);
   };
 
   // Get unassigned employees
@@ -557,7 +810,10 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
                   <h5 className="mb-1 font-semibold">Teams</h5>
                   <button
                     className="btn btn-sm btn-success font-medium"
-                    onClick={() => setShowTeamModal(true)}
+                    onClick={() =>{ 
+                      setIsEditing(false);
+                      setEditingTeam(null);
+                      setShowTeamModal(true)}}
                   >
                     <i className="bi bi-plus-lg me-1"></i>Add Team
                   </button>
@@ -584,15 +840,27 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
                           <span className="font-medium text-base">
                             {team.name}
                           </span>
-                          <button
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => deleteTeamHandler(team.id)}
-                          >
-                            <i
-                              className="bi bi-trash"
-                              style={{ fontSize: "1rem" }}
-                            ></i>
-                          </button>
+
+                          <div>
+                            <button
+                              className="btn btn-sm btn-outline-primary me-2"
+                              onClick={() => editTeamHandler(team.id)}
+                            >
+                              <i
+                                className="bi bi-pencil"
+                                style={{ fontSize: "0.8rem" }}
+                              ></i>
+                            </button>
+                            <button
+                              className="btn btn-sm btn-outline-danger"
+                              onClick={() => deleteTeamHandler(team.id)}
+                            >
+                              <i
+                                className="bi bi-trash"
+                                style={{ fontSize: "0.8rem" }}
+                              ></i>
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -606,7 +874,10 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
                   <h5 className="mb-0 font-semibold">Unassigned Employees</h5>
                   <button
                     className="btn btn-sm btn-success font-medium"
-                    onClick={() => setShowModal(true)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setEditingEmployee(null);
+                      setShowModal(true)}}
                   >
                     <i className="bi bi-person-plus me-1"></i>Add Employee
                   </button>
@@ -665,6 +936,14 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
                                       <td className="text-sm">{emp.skill}</td>
                                       <td className="text-sm">${emp.cost}</td>
                                       <td>
+                                        <button
+                                          className="btn btn-sm btn-outline-primary me-2"
+                                          onClick={() =>editEmployeeHandler(emp.id)}
+                                        >
+                                          <i
+                                            className="bi bi-pencil"
+                                          ></i>
+                                        </button>
                                         <button
                                           className="btn btn-sm btn-outline-danger"
                                           onClick={() => deleteEmployee(emp.id)}
@@ -801,13 +1080,21 @@ function Sidebar({ onToggleSidebar, isSidebarVisible }) {
 
       {showModal && (
         <EmployeeModal
-          onClose={() => setShowModal(false)}
-          onAdd={addEmployee}
+        onClose={handleEmployeeModalClose}
+        onAdd={addEmployee}
+        onEdit={editEmployeeSubmit}
+        employee={editingEmployee}
+        isEditing={isEditing}
         />
       )}
 
       {showTeamModal && (
-        <TeamModal onClose={() => setShowTeamModal(false)} onAdd={addTeam} />
+        <TeamModal
+        onClose={handleTeamModalClose} 
+        onAdd={addTeam} 
+        onEdit={editTeamSubmit}
+        team={editingTeam}
+        isEditing={isEditing} />
       )}
     </div>
   );

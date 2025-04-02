@@ -217,3 +217,87 @@ exports.updateEmployeeTeam = async (req, res) => {
     });
   }
 };
+
+// Update an employee
+exports.updateEmployee = async (req, res) => {
+  const { id } = req.params;
+  const { name, skill, cost } = req.body;
+
+  // Validate inputs
+  if (!name) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Employee name is required" 
+    });
+  }
+
+  if (!skill) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Employee skill is required" 
+    });
+  }
+
+  // Ensure cost is a valid number
+  const parsedCost = parseFloat(cost);
+  if (isNaN(parsedCost) || parsedCost < 0) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Invalid cost. Must be a non-negative number" 
+    });
+  }
+
+  try {
+    // Check if employee exists
+    const employee = await Employees.findByPk(id);
+    if (!employee) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Employee not found" 
+      });
+    }
+
+    // Check if another employee with same name exists
+    const existingEmployee = await Employees.findOne({ 
+      where: { 
+        name: {
+          [Op.like]: name.trim() 
+        },
+        id: { [Op.ne]: id }
+      } 
+    });
+
+    if (existingEmployee) {
+      return res.status(400).json({ 
+        success: false,
+        message: `Another employee with name "${name}" already exists` 
+      });
+    }
+
+    // Update employee
+    await employee.update({
+      name: name.trim(),
+      skill: skill.trim(),
+      cost: parsedCost
+    });
+
+    res.status(200).json({ 
+      success: true,
+      message: "Employee updated successfully", 
+      employee: {
+        id: employee.id,
+        name: employee.name,
+        skill: employee.skill,
+        cost: employee.cost,
+        teamId: employee.teamId
+      }
+    });
+  } catch (error) {
+    console.error("Error updating employee:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Internal Server Error",
+      errorDetails: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};

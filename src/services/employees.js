@@ -14,10 +14,10 @@ export const createEmployees = (values) => {
    return axios.delete(`${Endpoint.deleteEmployees}/${employeeId}`);
 }
 
-// export const updateEmployees = (employeeId, teamId) => {
-//    return axios.put(`/updateemployees/${employeeId}`, { teamId });
-//    // This URL might be incorrect
-//  }
+export const editEmployees = (employeeId, employeeData) => {
+   return axios.put(`${Endpoint.editEmployees}/${employeeId}`, employeeData);
+ };
+
  export const updateEmployees = (employeeId, teamId) => {
    return axios.put(`${Endpoint.updateEmployees}/${employeeId}`, { teamId });
  }
